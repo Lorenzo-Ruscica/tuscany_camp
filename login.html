@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login / Sign Up | Tuscany Camp 2026</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;800&family=Playfair+Display:ital,wght@1,400;1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <header id="navbar">
+        <div class="nav-container">
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="programma.html">Program</a></li>
+                    <li><a href="guest-teachers.html">Guest Teachers</a></li>
+                    <li><a href="packages.html">Packages</a></li>
+                    <li><a href="entry-form.html">Entry Form</a></li>
+                    <li><a href="booking.html">Book Lesson</a></li>
+                    <li><a href="contatti.html">Contact</a></li>
+                    <li><a href="login.html" class="active"><i class="fas fa-user"></i> Account</a></li>
+                </ul>
+
+                <div class="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <div class="mobile-menu-overlay"></div>
+    <div class="mobile-menu">
+        <div class="mobile-links-container">
+            <a href="index.html">Home</a>
+            <a href="login.html" class="active">Account / Login</a>
+            </div>
+    </div>
+
+    <section class="auth-section">
+        <div class="container">
+            
+            <div class="auth-container fade-in-up">
+                
+                <div class="auth-switch">
+                    <button class="switch-btn active" id="btn-login">Login</button>
+                    <button class="switch-btn" id="btn-signup">Sign Up</button>
+                </div>
+
+                <form id="loginForm" class="auth-form active">
+                    <h3>Welcome Back</h3>
+                    <p class="auth-subtitle">Access your personal area to book lessons.</p>
+                    
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="loginEmail" required placeholder="email@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" required placeholder="********">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block">LOG IN</button>
+                    <p class="form-footer"><a href="#">Forgot Password?</a></p>
+                </form>
+
+                <form id="signupForm" class="auth-form">
+                    <h3>Create Account</h3>
+                    <p class="auth-subtitle">Join Tuscany Camp 2026.</p>
+                    
+                    <div class="input-row">
+                        <div class="form-group">
+                            <label>First Name</label>
+                            <input type="text" id="regName" required placeholder="Mario">
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            <input type="text" id="regSurname" required placeholder="Rossi">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="regEmail" required placeholder="email@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="regPassword" required placeholder="Create a password (min 6 chars)">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">SIGN UP</button>
+                </form>
+
+                <div id="authMessage" class="auth-message"></div>
+
+            </div>
+
+        </div>
+    </section>
+
+    <footer id="contact">
+        <div class="container">
+            <div class="copyright">
+                &copy; 2026 Tuscany Camp.
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
