@@ -21,9 +21,6 @@
     --radius-btn: 50px;
 }
 
-/* FILE: style.css - All'inizio del file */
-
-/* FILE: style.css - INIZIO DEL FILE (Reset completo) */
 
 * {
     margin: 0;
@@ -31,22 +28,25 @@
     box-sizing: border-box;
 }
 
+/* TRUCCO DEFINTIVO: Sfondo nero alla radice */
 html {
-    height: 100%; /* Assicura che l'HTML occupi tutto */
+    height: 100%;
+    background-color: #000000; /* Se c'è spazio vuoto sotto, sarà nero */
 }
 
 body {
     font-family: 'Outfit', sans-serif;
-    background-color: var(--bg-main);
+    /* Lo sfondo animato coprirà questo, ma il nero sotto protegge il footer */
+    background-color: var(--bg-main); 
     color: var(--text-main);
     overflow-x: hidden;
     line-height: 1.6;
     
-    /* TRUCCO PER IL FOOTER FISSO IN BASSO */
-    min-height: 100vh;       /* Altezza minima 100% dello schermo */
-    display: flex;           /* Usa Flexbox */
-    flex-direction: column;  /* Dispone gli elementi in colonna */
-    margin: 0;               /* Rimuove margini che creano spazi bianchi */
+    /* Layout Flexbox per spingere il footer */
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    margin: 0; /* Rimuove margini di default */
 }
 
 h1, h2, h3, h4 {
@@ -182,91 +182,84 @@ ul { list-style: none; }
     -webkit-text-fill-color: transparent;
 }
 
-/* FILE: style.css */
-
-/* --- HEADER FLOATING GLASS (Versione Big Logo) --- */
-/* FILE: style.css - HEADER PIÙ SPESSO E STACCATO */
+/* --- 1. HEADER FLOATING GLASS (Animato) --- */
 header {
     position: fixed;
-    top: 40px; /* Distanza dall'alto */
+    /* STATO INIZIALE (Quando sei in cima alla pagina) */
+    top: 40px; 
     left: 50%;
     transform: translateX(-50%);
     
     width: 95%;
-    max-width: 1300px;
+    max-width: 1200px;
     
-    /* MODIFICA QUI: Aumentato a 35px sopra/sotto per renderla più spessa */
+    /* Grande e Spazioso */
     padding: 35px 50px; 
+    border-radius: 80px; 
     
-    border-radius: 80px; /* Ancora più arrotondato */
-    
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(20px);
+    /* Più trasparente all'inizio */
+    background: rgba(20, 20, 20, 0.7); 
+    backdrop-filter: blur(15px);
     border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4); /* Ombra più profonda */
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
     
-    z-index: 1000;
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    animation: floatDown 1s ease forwards;
+    z-index: 2000;
+    
+    /* Animazione fluida per tutti i cambiamenti */
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-
-
-@keyframes floatDown {
-    from { top: -150px; opacity: 0; }
-    to { top: 40px; opacity: 1; }
-}
-
-/* Quando scorri la pagina (diventa un po' più compatta ma resta elegante) */
+/* STATO SCROLLED (Quando scendi) */
 header.scrolled {
-    background: rgba(10, 10, 10, 0.8); 
-    backdrop-filter: blur(25px);
-    padding: 20px 50px; /* Si riduce un po' ma non troppo */
+    /* Diventa più compatto e sale un po' */
     top: 20px; 
+    padding: 25px 50px; /* Si riduce l'altezza */
+    border-radius: 70px; /* Meno arrotondato */
+    
+    /* Diventa più scuro per leggere meglio */
+    background: rgba(10, 10, 10, 0.95); 
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(25px);
 }
 
 .nav-container {
+    width: 100%;
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
 }
 
-.logo {
+/* --- 2. DESKTOP LINKS --- */
+.nav-links {
     display: flex;
+    gap: 30px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
     align-items: center;
+    transition: gap 0.4s ease; /* Anima anche lo spazio tra i link */
 }
 
-/* 3. LOGO MOLTO PIÙ GRANDE */
-.logo img {
-    max-height: 120px; /* Qui decidi la grandezza (prima era 65px) */
-    width: auto;
-    object-fit: contain;
-    filter: drop-shadow(0 0 8px rgba(255,255,255,0.3));
-    transition: all 0.5s ease;
+/* Quando scorri, i link si avvicinano leggermente */
+header.scrolled .nav-links {
+    gap: 25px;
 }
 
-/* Quando scorri la pagina, il logo diventa più piccolo per non disturbare */
-header.scrolled .logo img {
-    max-height: 70px;
-}
-
-/* --- MENU LINKS --- */
-.nav-links { 
-    display: flex; 
-    gap: 25px; 
-    align-items: center; 
-}
-
-.nav-links a { 
-    position: relative;
-    font-weight: 600; /* Un po' più grassetto per bilanciare il logo grande */
-    font-size: 0.9rem; 
+.nav-links a {
+    text-decoration: none;
+    color: var(--color-white);
+    font-size: 0.95rem; /* Dimensione iniziale */
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: var(--color-white);
-    opacity: 0.9;
     transition: all 0.3s ease;
-    padding: 5px 0;
+    position: relative;
+    white-space: nowrap; /* IMPEDISCE DI ANDARE A CAPO */
+}
+
+/* Rimpicciolisci leggermente il testo quando scorri */
+header.scrolled .nav-links a {
+    font-size: 0.85rem;
 }
 
 .nav-links a::after {
@@ -274,99 +267,185 @@ header.scrolled .logo img {
     position: absolute;
     width: 0;
     height: 2px;
-    bottom: -2px;
+    bottom: -4px;
     left: 50%;
     background: var(--color-hot-pink);
     transition: all 0.3s ease;
     transform: translateX(-50%);
-    box-shadow: 0 0 10px var(--color-hot-pink);
 }
 
-.nav-links a:hover {
-    color: var(--color-white);
-    text-shadow: 0 0 10px rgba(245, 83, 148, 0.8);
-    opacity: 1;
+.nav-links a:hover,
+.nav-links a.active {
+    color: var(--color-hot-pink);
 }
 
-.nav-links a:hover::after,
+.nav-links a:hover::after, 
 .nav-links a.active::after {
     width: 100%;
 }
 
-.nav-links a.active {
-    opacity: 1;
-    color: var(--color-hot-pink);
-}
-
-/* Gestione Menu Mobile */
-.mobile-menu { display: none; } /* Fix per nascondere menu mobile su desktop */
-
-@media (max-width: 900px) {
+/* --- MEDIA QUERY INTERMEDIA (Laptop/Tablet Orizzontali) --- */
+/* Qui forziamo dimensioni ridotte per evitare che il menu si rompa */
+@media (min-width: 993px) and (max-width: 1300px) {
     header {
-        padding: 15px 25px;
+        /* Parte già un po' più piccolo su schermi medi */
+        width: 98%; 
+        padding: 20px 30px; 
         top: 20px;
     }
-    .logo img { max-height: 70px; } /* Su mobile torna piccolo altrimenti esce */
-    .nav-links { display: none; }
-    .hamburger { display: block; }
-}
-/* --- MENU LINKS --- */
-.nav-links { 
-    display: flex; 
-    gap: 25px; /* Più spazio tra le voci */
-    align-items: center; 
-}
-
-.nav-links a { 
-    position: relative;
-    font-weight: 500; 
-    font-size: 0.85rem; 
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--color-white);
-    opacity: 0.9;
-    transition: all 0.3s ease;
-    padding: 5px 0;
-}
-
-/* Linea animata sotto i link */
-.nav-links a::after {
-    content: '';
-    position: absolute;
-    width: 0;
-    height: 2px;
-    bottom: -2px;
-    left: 50%;
-    background: var(--color-hot-pink);
-    transition: all 0.3s ease;
-    transform: translateX(-50%);
-    box-shadow: 0 0 10px var(--color-hot-pink);
-}
-
-.nav-links a:hover {
-    color: var(--color-white);
-    text-shadow: 0 0 10px rgba(245, 83, 148, 0.8);
-    opacity: 1;
-}
-
-.nav-links a:hover::after,
-.nav-links a.active::after {
-    width: 100%;
-}
-
-.nav-links a.active {
-    opacity: 1;
-    color: var(--color-hot-pink);
-}
-
-/* Responsive per schermi piccoli: adatta la barra */
-@media (max-width: 768px) {
-    header {
-        width: 95%;
-        padding: 15px 20px;
-        top: 15px;
+    header.scrolled {
+        padding: 15px 25px;
+        top: 10px;
     }
-    .hamburger { display: block; }
+    
+    .nav-links { gap: 20px; }
+    header.scrolled .nav-links { gap: 15px; }
+    
+    .nav-links a { font-size: 0.85rem; }
+}
+
+/* --- MEDIA QUERY MOBILE (Smartphone/Tablet Verticali) --- */
+@media (max-width: 992px) {
+    .nav-links { display: none; } 
+    .hamburger { display: flex; }
+    
+    header {
+        width: 92%;
+        padding: 15px 25px; /* Compatto su mobile */
+        top: 15px;
+        justify-content: flex-end; 
+        
+        /* Su mobile rimuoviamo l'effetto "Big to Small" esagerato */
+        background: rgba(10, 10, 10, 0.9); 
+    }
+    
+    /* Su mobile lo stato scrolled cambia solo leggermente la trasparenza */
+    header.scrolled {
+        top: 10px;
+        padding: 12px 25px;
+        background: rgba(0, 0, 0, 0.95);
+    }
+    
+    .nav-container { justify-content: flex-end; }
+}
+
+/* --- 3. HAMBURGER ICON (Per Mobile) --- */
+.hamburger {
+    display: none; /* Nascosto su Desktop */
+    flex-direction: column;
+    justify-content: space-between;
+    width: 30px;
+    height: 20px;
+    cursor: pointer;
+    z-index: 2001; /* Sopra l'header stesso */
+}
+
+.hamburger span {
+    display: block;
+    width: 100%;
+    height: 3px;
+    background-color: var(--color-white);
+    border-radius: 3px;
+    transition: all 0.3s ease-in-out;
+}
+
+/* Animazione X */
+.hamburger.active span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+    background-color: var(--color-hot-pink);
+}
+.hamburger.active span:nth-child(2) { opacity: 0; }
+.hamburger.active span:nth-child(3) {
+    transform: translateY(-9px) rotate(-45deg);
+    background-color: var(--color-hot-pink);
+}
+
+/* --- 4. MOBILE MENU (Cassetto Laterale) --- */
+.mobile-menu {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 85%;
+    max-width: 350px;
+    height: 100vh;
+    background-color: #000;
+    border-left: 1px solid var(--color-hot-pink);
+    
+    z-index: 1500; /* Sotto l'header (2000) ma sopra il sito */
+    
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.77, 0, 0.175, 1);
+    
+    display: flex;
+    flex-direction: column;
+    padding: 140px 40px 40px; /* Spazio in alto extra per non finire sotto l'header */
+    box-shadow: -20px 0 50px rgba(0,0,0,0.9);
+}
+
+.mobile-menu.active {
+    transform: translateX(0);
+}
+
+.mobile-links-container {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.mobile-links-container a {
+    color: white;
+    font-size: 1.5rem;
+    font-family: 'Playfair Display', serif;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding-bottom: 10px;
+    transition: 0.3s;
+}
+
+.mobile-links-container a.active {
+    color: var(--color-hot-pink);
+    border-left: 4px solid var(--color-hot-pink);
+    padding-left: 15px;
+    border-bottom: none;
+}
+
+.mobile-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 1400;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}
+
+.mobile-menu-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* --- 5. MEDIA QUERY (Mobile) --- */
+@media (max-width: 992px) {
+    .nav-links { display: none; } /* Nascondi link desktop */
+    
+    .hamburger { 
+        display: flex; /* Mostra Hamburger */
+        /* IMPORTANTE: Nessuna posizione fissa, rimane dentro l'header */
+    }
+    
+    header {
+        /* Adatta l'header su mobile */
+        width: 90%;
+        padding: 15px 30px; 
+        justify-content: flex-end; /* Sposta hamburger a destra se vuoi, o center */
+    }
+    
+    .nav-container {
+        justify-content: flex-end; /* Allinea hamburger a destra */
+    }
 }
 /* --- HERO SECTION (Layout 2 Colonne: Testo Sx / Data Dx) --- */
 .hero {
@@ -450,21 +529,6 @@ header.scrolled .logo img {
     transform: scale(1.1) rotate(10deg);
     border-color: var(--color-hot-pink);
     cursor: pointer;
-}
-
-/* MOBILE: Su schermi piccoli lo mettiamo sopra centrato */
-@media (max-width: 992px) {
-    .sticker-logo {
-        top: -60px;
-        right: 50%;
-        transform: translateX(50%); /* Lo centra orizzontalmente */
-        width: 100px;
-        height: 100px;
-    }
-    /* Manteniamo il transform nel hover corretto per mobile */
-    .sticker-logo:hover {
-        transform: translateX(50%) scale(1.1);
-    }
 }
 
 /* --- COUNTDOWN STYLE (Inserito come richiesto) --- */
@@ -830,21 +894,22 @@ header.scrolled .logo img {
     color: var(--color-white);
     border-color: var(--color-hot-pink);
 }
-/* --- FOOTER --- */
-/* FILE: style.css - SOSTITUISCI LA SEZIONE FOOTER */
+/* FILE: style.css - FOOTER CORRETTO */
 
 footer {
-    /* Sfondo nero profondo per coprire tutto */
-    background: #000000; 
-    
+    background: #000000; /* Nero solido */
     border-top: 1px solid rgba(255,255,255,0.1);
-    padding: 50px 0 20px;
+    
+    /* Padding generoso per non farlo sembrare mozzato */
+    padding: 60px 0 40px; 
+    
     position: relative;
-    z-index: 10;
+    z-index: 50; /* Z-index alto per stare sopra a tutto */
     width: 100%;
     
-    /* SPINGE IL FOOTER IN FONDO e riempie lo spazio rimanente */
+    /* Spinge il footer in fondo */
     margin-top: auto; 
+    margin-bottom: 0 !important; /* Forza margine zero sotto */
 }
 
 .footer-content {
@@ -854,6 +919,9 @@ footer {
     flex-wrap: wrap;
     margin-bottom: 30px;
 }
+
+/* ... Mantieni le classi interne (.footer-logo, .footer-info) come prima ... */
+/* Se vuoi ti ricopio anche quelle per comodità, ma basta il footer container */
 
 .footer-logo h2 { 
     color: var(--color-white); 
@@ -892,6 +960,42 @@ footer {
 .footer-info a:hover { 
     color: var(--color-hot-pink); 
     padding-right: 5px;
+}
+
+/* Icona YouTube Rosa */
+.social-icon {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    margin-top: 15px;
+    color: var(--color-hot-pink) !important; 
+    font-size: 2.2rem !important;
+    transition: all 0.4s ease;
+    text-decoration: none;
+}
+
+.social-icon:hover {
+    transform: scale(1.15) rotate(5deg);
+    color: var(--color-white) !important;
+    text-shadow: 0 0 20px var(--color-hot-pink); 
+}
+
+.copyright {
+    text-align: center;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding-top: 20px;
+    color: rgba(255,255,255,0.3);
+    font-size: 0.8rem;
+    padding-bottom: 0; /* Sicurezza */
+}
+
+@media (max-width: 768px) {
+    .footer-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 30px;
+    }
+    .footer-info { text-align: center; }
 }
 
 /* --- ICONA YOUTUBE STILE TUSCANY CAMP --- */
@@ -971,7 +1075,302 @@ footer {
     .countdown-item span { font-size: 1.5rem; }
 }
 
-/* --- FIX: Nasconde il menu mobile su Desktop --- */
-.mobile-menu {
-    display: none;
+
+
+/* --- PAGINA PROGRAMMA (Versione Compatta) --- */
+
+.page-hero {
+    padding: 160px 0 40px; /* Un po' meno spazio sopra */
+    text-align: center;
+}
+
+.divider-line {
+    width: 60px;
+    height: 3px;
+    background: var(--color-hot-pink);
+    margin: 20px auto;
+    border-radius: 2px;
+}
+
+.program-section {
+    padding: 20px 0 80px;
+}
+
+/* GRIGLIA: Spazio ridotto tra le card */
+.program-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; 
+    gap: 30px; /* Ridotto da 40px a 30px */
+}
+
+/* CARD PIÙ PICCOLE */
+.program-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px; /* Arrotondamento leggermente ridotto */
+    overflow: hidden; 
+    backdrop-filter: blur(5px);
+    transition: transform 0.4s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%; 
+}
+
+.program-card:hover {
+    transform: translateY(-5px); /* Movimento più sottile */
+    border-color: rgba(245, 83, 148, 0.3);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+}
+
+/* IMMAGINE: Altezza ridotta */
+.prog-card-img {
+    width: 100%;
+    height: 200px; /* Ridotto da 250px a 200px */
+    overflow: hidden;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.prog-card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+}
+
+.program-card:hover .prog-card-img img {
+    transform: scale(1.08);
+}
+
+/* CONTENUTO: Padding e Font ridotti */
+.prog-card-content {
+    padding: 20px 25px; /* Ridotto da 30px */
+    text-align: left;
+    flex-grow: 1;
+}
+
+.prog-card-content h3 {
+    font-size: 1.5rem; /* Ridotto da 1.8rem */
+    font-family: 'Playfair Display', serif;
+    color: var(--color-hot-pink);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.prog-card-content p {
+    font-size: 0.95rem; /* Testo leggermente più piccolo */
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.5;
+}
+
+/* --- Area Download in Fondo --- */
+.program-download-area {
+    margin-top: 60px;
+    text-align: center;
+}
+
+/* BOTTONE RIDOTTO */
+.btn-large-download {
+    padding: 15px 40px; /* Ridotto da 20px 50px */
+    font-size: 1rem;    /* Ridotto da 1.2rem */
+    letter-spacing: 1px;
+    border-radius: 100px;
+    background: var(--accent-gradient);
+    box-shadow: 0 0 15px rgba(245, 83, 148, 0.3);
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.btn-large-download:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 30px rgba(245, 83, 148, 0.6);
+}
+/* FILE: style.css - AGGIUNGI IN FONDO (Dentro la media query Mobile) */
+
+@media (max-width: 992px) {
+
+    /* --- FOOTER MOBILE OPTIMIZATION --- */
+    
+    footer {
+        padding: 40px 20px; /* Più spazio interno */
+        text-align: center; /* Centra tutto il testo di base */
+    }
+
+    .footer-content {
+        flex-direction: column; /* Impila Logo e Contatti uno sopra l'altro */
+        align-items: center;    /* Centra i blocchi orizzontalmente */
+        justify-content: center;
+        gap: 40px; /* Spazio tra la sezione Logo e la sezione Contatti */
+    }
+
+    /* Forza i contenitori interni a occupare tutto lo spazio e centrarsi */
+    .footer-logo, 
+    .footer-info {
+        width: 100%;
+        text-align: center;
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Centra specificamente i testi e i titoli */
+    .footer-info h3,
+    .footer-logo h3,
+    .footer-logo p,
+    .footer-info p {
+        text-align: center;
+        width: 100%;
+    }
+
+    /* Centra i link (email e telefono) */
+    .footer-info a {
+        justify-content: center; /* Se sono flex */
+        text-align: center;
+        display: inline-block; /* O block, a seconda di come vuoi che vadano a capo */
+    }
+
+    /* Centra l'icona social */
+    .social-icon {
+        margin: 20px auto 0; /* Auto ai lati la centra */
+        display: flex !important;
+    }
+
+    .copyright {
+        margin-top: 30px;
+        font-size: 0.75rem;
+    }
+}
+
+
+
+/* --- PAGINA GUEST TEACHERS --- */
+
+/* Sezione Organizzatore (Highlight) */
+.organizer-section {
+    padding: 0 0 60px;
+    text-align: center;
+}
+
+.organizer-card {
+    display: inline-block;
+    position: relative;
+}
+
+.organizer-img {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    overflow: hidden;
+    border: 4px solid var(--color-white);
+    box-shadow: 0 0 30px rgba(245, 83, 148, 0.6); /* Glow Rosa */
+    transition: transform 0.4s ease;
+}
+
+.organizer-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.organizer-card:hover .organizer-img {
+    transform: scale(1.05);
+    border-color: var(--color-hot-pink);
+}
+
+.role-tag {
+    display: block;
+    color: var(--color-hot-pink);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 5px;
+    font-weight: 700;
+}
+
+.organizer-info h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    color: var(--color-white);
+}
+
+/* Griglia Insegnanti */
+.teachers-section {
+    padding-bottom: 100px;
+}
+
+.teachers-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+}
+
+/* Riquadri Categoria (Vetro) */
+.teacher-category {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 30px;
+    padding: 40px;
+    backdrop-filter: blur(5px);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.teacher-category:hover {
+    transform: translateY(-5px);
+    border-color: rgba(245, 83, 148, 0.2);
+}
+
+.category-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    color: var(--color-white);
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.category-title .highlight {
+    color: var(--color-hot-pink);
+}
+
+/* Lista Nomi */
+.teacher-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.teacher-list li {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.9);
+    padding: 8px 0;
+    transition: all 0.2s ease;
+}
+
+.teacher-list li:hover {
+    color: var(--color-hot-pink);
+    transform: translateX(5px);
+}
+
+.country {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-left: 5px;
+    font-weight: 300;
+}
+
+.teacher-list li:hover .country {
+    color: rgba(245, 83, 148, 0.7);
+}
+
+/* Mobile Guest Teachers */
+@media (max-width: 900px) {
+    .teachers-grid {
+        grid-template-columns: 1fr; /* Una colonna su mobile */
+        gap: 30px;
+    }
+    
+    .teacher-category {
+        padding: 30px 20px;
+    }
 }
