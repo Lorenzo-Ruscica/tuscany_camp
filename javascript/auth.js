@@ -171,12 +171,12 @@ document.addEventListener('DOMContentLoaded', () => {
             btnConfirmReset.innerText = "Sending...";
             btnConfirmReset.disabled = true;
 
-            try {
-                // FIX INTELLIGENTE PER GITHUB PAGES:
-                // Sostituiamo 'login.html' con 'account.html' nell'URL attuale.
-                // Questo mantiene la cartella del progetto (es. /tuscany_camp/) se presente.
+try {
+                // FIX INTELLIGENTE PER GITHUB PAGES & LOCALHOST:
+                // Sostituiamo 'login.html' con 'update-password.html'
+                // Così il link punta alla nuova pagina dedicata.
                 const currentUrl = window.location.href; 
-                const redirectUrl = currentUrl.replace('login.html', 'account.html');
+                const redirectUrl = currentUrl.replace('login.html', 'update-password.html');
 
                 const { error } = await window.supabase.auth.resetPasswordForEmail(email, {
                     redirectTo: redirectUrl
