@@ -29,15 +29,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
-    // 2. REDIRECT SE GIÀ LOGGATO
+    // 2. REDIRECT SE GIÀ LOGGATO (CORRETTO)
     // ==========================================
+    // Questo impedisce che la pagina di reset venga chiusa automaticamente
     if (window.supabase) {
-        window.supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) {
-                // Se l'utente è già dentro, lo mandiamo alla home
-                window.location.href = 'index.html';
-            }
-        });
+        const currentPage = window.location.pathname;
+        // Se siamo sulla pagina di cambio password, NON fare redirect
+        const isUpdatePasswordPage = currentPage.includes('update-password.html');
+
+        if (!isUpdatePasswordPage) {
+            window.supabase.auth.getSession().then(({ data: { session } }) => {
+                if (session) {
+                    // Se l'utente è loggato e prova ad andare su login, lo mandiamo alla home
+                    // Ma se è altrove (es. home, account) lo lasciamo stare
+                    if (currentPage.includes('login.html')) {
+                        window.location.href = 'index.html';
+                    }
+                }
+            });
+        }
     }
 
     // ==========================================
@@ -74,8 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 authMessage.innerText = "Registrazione riuscita! Ora puoi fare il Login.";
                 authMessage.style.display = 'block';
                 formSignup.reset();
-                
-                // Passa automaticamente al tab Login dopo 1.5 secondi
                 setTimeout(() => { if(btnLogin) btnLogin.click(); }, 1500);
 
             } catch (err) {
@@ -114,7 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (error) throw error;
 
-                // Successo -> Vai alla Home
                 window.location.href = "index.html"; 
 
             } catch (err) {
@@ -142,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             resetModal.style.display = 'flex';
             if(resetEmailInput) {
-                resetEmailInput.value = ''; // Pulisci campo
+                resetEmailInput.value = '';
                 resetEmailInput.focus();
             }
         });
@@ -156,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // C. Invia Richiesta a Supabase (FIX URL)
+    // C. Invia Richiesta a Supabase (FIX URL UNIVERSALE)
     if (btnConfirmReset) {
         btnConfirmReset.addEventListener('click', async (e) => {
             e.preventDefault();
@@ -171,12 +178,13 @@ document.addEventListener('DOMContentLoaded', () => {
             btnConfirmReset.innerText = "Sending...";
             btnConfirmReset.disabled = true;
 
-try {
-                // FIX INTELLIGENTE PER GITHUB PAGES & LOCALHOST:
-                // Sostituiamo 'login.html' con 'update-password.html'
-                // Così il link punta alla nuova pagina dedicata.
-                const currentUrl = window.location.href; 
-                const redirectUrl = currentUrl.replace('login.html', 'update-password.html');
+            try {
+                // CALCOLO URL ROBUSTO:
+                // Prende la cartella attuale (es. /tuscany_camp/) e aggiunge update-password.html
+                // Funziona sia se sei su login.html che su index.html
+                const path = window.location.pathname;
+                const directory = path.substring(0, path.lastIndexOf('/')); 
+                const redirectUrl = window.location.origin + directory + '/update-password.html';
 
                 const { error } = await window.supabase.auth.resetPasswordForEmail(email, {
                     redirectTo: redirectUrl
