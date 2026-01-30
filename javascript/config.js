@@ -1,97 +1,187 @@
 // ============================================================
 // FILE: config.js
-// DESCRIZIONE: Configurazione Supabase, Navbar state, Logout
+// DESCRIZIONE: Configurazione Supabase, Navbar, Protezione Pagine, Modali Globali
 // ============================================================
 
 // ⚠️ INSERISCI QUI I TUOI DATI VERI
 const SUPABASE_URL = 'https://gehqxdzlqcfxmhlaseeb.supabase.co'; 
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdlaHF4ZHpscWNmeG1obGFzZWViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1MTUyMzgsImV4cCI6MjA4NTA5MTIzOH0.qKfxPMOFakbCuOSmFkPAlR6LovVRT-IO2cRk5bR3tUY';
 
-// Controllo se la libreria è stata caricata dal CDN
+// 1. Inizializzazione Supabase
 if (window.supabase && window.supabase.createClient) {
-    
-    // Inizializza il client usando la libreria caricata
-    // NOTA: Salviamo il client in una variabile globale 'window.supabase' sovrascrivendo la libreria
-    // Questo va bene perché d'ora in poi useremo solo il client.
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     window.supabase = client;
-    
-    console.log("✅ Config: Supabase collegato correttamente!");
-
+    console.log("✅ Config: Supabase collegato!");
 } else {
-    console.error("❌ ERRORE CRITICO: La libreria Supabase non è stata caricata prima di config.js.");
-    console.error("Verifica l'ordine degli script nel file HTML.");
+    console.error("❌ ERRORE: Libreria Supabase non trovata.");
 }
 
-// --- FUNZIONE LOGOUT GLOBALE ---
-window.handleLogout = async function() {
-    if(confirm("Sei sicuro di voler uscire?")) {
-        // Verifica che il client sia pronto
-        if (window.supabase && window.supabase.auth) {
-            const { error } = await window.supabase.auth.signOut();
-            if (!error) {
-                window.location.reload(); 
-            } else {
-                alert("Errore logout: " + error.message);
-            }
+// ============================================================
+// --- 2. GESTIONE MODALI GLOBALI (Alert & Confirm) ---
+// ============================================================
+
+// Funzione: Alert Personalizzato (Sostituisce alert standard)
+window.showCustomAlert = (title, message) => {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('custom-modal');
+        if (!modal) {
+            alert(message); // Fallback se manca l'HTML
+            resolve();
+            return;
+        }
+        
+        // Elementi
+        const mTitle = document.getElementById('modal-title');
+        const mMsg = document.getElementById('modal-message');
+        const btnOk = document.getElementById('modal-btn-ok');
+        const btnCancel = document.getElementById('modal-btn-cancel');
+
+        // Setup
+        mTitle.innerText = title;
+        mMsg.innerText = message;
+        btnCancel.style.display = 'none'; // Nascondi Annulla
+        btnOk.innerText = "OK";
+        
+        modal.style.display = 'flex';
+
+        btnOk.onclick = () => {
+            modal.style.display = 'none';
+            resolve();
+        };
+    });
+};
+
+// Funzione: Confirm Personalizzato (Sostituisce confirm standard)
+window.showCustomConfirm = (title, message, isDanger = false) => {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('custom-modal');
+        if (!modal) {
+            resolve(confirm(message)); // Fallback
+            return;
+        }
+
+        const mTitle = document.getElementById('modal-title');
+        const mMsg = document.getElementById('modal-message');
+        const btnOk = document.getElementById('modal-btn-ok');
+        const btnCancel = document.getElementById('modal-btn-cancel');
+
+        mTitle.innerText = title;
+        mMsg.innerText = message;
+        btnCancel.style.display = 'block';
+        
+        // Stile pericolo
+        if (isDanger) {
+            btnOk.classList.add('btn-danger');
+            mTitle.style.color = '#dc3545';
         } else {
-            console.error("Supabase non trovato durante il logout");
+            btnOk.classList.remove('btn-danger');
+            mTitle.style.color = '#F55394';
+        }
+
+        modal.style.display = 'flex';
+
+        btnOk.onclick = () => { modal.style.display = 'none'; resolve(true); };
+        btnCancel.onclick = () => { modal.style.display = 'none'; resolve(false); };
+    });
+};
+
+// ============================================================
+// --- 3. PROTEZIONE PAGINE E NAVBAR ---
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', async () => {
+    
+    // --- A. PROTEZIONE PAGINE (Entry Form & Booking) ---
+ // --- A. PROTEZIONE PAGINE (Versione Fixata per Modale) ---
+    async function checkPageProtection() {
+        const protectedPages = ['booking.html', 'entry-form.html'];
+        const currentPage = window.location.pathname;
+
+        // Verifica se siamo in una pagina protetta
+        const isProtected = protectedPages.some(page => currentPage.includes(page));
+
+        if (isProtected) {
+            // Controlla sessione
+            const { data: { session } } = await window.supabase.auth.getSession();
+            
+            if (!session) {
+                // UTENTE NON LOGGATO
+                
+                // 1. Nascondiamo tutto tranne il modale per evitare spoiler
+                const elementsToHide = document.querySelectorAll('header, section, footer, .bg-shapes');
+                elementsToHide.forEach(el => el.style.display = 'none');
+                
+                // 2. Mostriamo l'avviso elegante
+                // Nota: showCustomAlert è asincrono, aspettiamo che l'utente clicchi OK
+                if (window.showCustomAlert) {
+                    await window.showCustomAlert("Area Riservata", "Devi effettuare il Login per accedere a questa pagina.");
+                } else {
+                    alert("Devi effettuare il Login per accedere a questa pagina.");
+                }
+                
+                // 3. Redirect al login
+                window.location.href = 'login.html';
+            }
         }
     }
-}
+    
+    // Esegui controllo protezione
+    if (window.supabase) await checkPageProtection();
 
-// --- GESTIONE NAVBAR (Aggiornata per Account Page) ---
-document.addEventListener('DOMContentLoaded', () => {
+
+    // --- B. AGGIORNAMENTO NAVBAR ---
     function updateNavbar(session) {
-        // Seleziona l'elemento della lista (LI) che contiene il link Account
-        // Nel tuo HTML hai: <li><a href="login.html" ...> Account</a></li>
-        // Per farlo funzionare bene, nell'HTML di tutte le pagine, dai un ID a quel <li>
-        // Esempio HTML: <li id="nav-auth-item"><a href="login.html" id="nav-auth-link"><i class="fas fa-user"></i> Account</a></li>
-        
-        const navAuthLink = document.querySelector('.nav-links a[href*="login.html"], .nav-links a[href*="account.html"]');
-        const navBooking = document.getElementById('nav-booking');
+        const deskAuthLink = document.getElementById('nav-auth-link');
+        const mobAuthLink = document.getElementById('mobile-auth-link');
+        const deskBooking = document.getElementById('nav-booking');
+        const mobBooking = document.getElementById('mobile-booking');
 
         if (session) {
-            // --- UTENTE LOGGATO ---
-            
-            // 1. Cambia il link "Account" -> "My Profile"
-            if (navAuthLink) {
-                navAuthLink.href = "account.html";
-                navAuthLink.innerHTML = '<i class="fas fa-user-circle"></i> My Profile';
+            // --- LOGGATO ---
+            let initial = "U";
+            if (session.user?.user_metadata?.first_name) {
+                initial = session.user.user_metadata.first_name.charAt(0);
             }
+            
+            const avatarHTML = `<div class="user-avatar">${initial}</div>`;
+            const avatarMobile = `<div class="user-avatar">${initial}</div> <span>My Profile</span>`;
 
-            // 2. Sblocca Booking
-            if(navBooking) navBooking.onclick = null; 
+            if (deskAuthLink) { deskAuthLink.href = "account.html"; deskAuthLink.innerHTML = avatarHTML; }
+            if (mobAuthLink) { mobAuthLink.href = "account.html"; mobAuthLink.innerHTML = avatarMobile; }
+
+            // Sblocca Booking
+            if(deskBooking) deskBooking.onclick = null;
+            if(mobBooking) mobBooking.onclick = null;
 
         } else {
-            // --- UTENTE NON LOGGATO ---
-            
-            // 1. Ripristina link "Login"
-            if (navAuthLink) {
-                navAuthLink.href = "login.html";
-                navAuthLink.innerHTML = '<i class="fas fa-user"></i> Account / Login';
-            }
+            // --- NON LOGGATO ---
+            if (deskAuthLink) { deskAuthLink.href = "login.html"; deskAuthLink.innerHTML = '<i class="fas fa-user" style="font-size: 1.2rem;"></i>'; }
+            if (mobAuthLink) { mobAuthLink.href = "login.html"; mobAuthLink.innerHTML = '<i class="fas fa-user"></i> <span>Account / Login</span>'; }
 
-            // 2. Blocca Booking
-            if(navBooking) {
-                navBooking.onclick = (e) => {
-                    e.preventDefault();
-                    alert("Effettua il Login per prenotare.");
-                    window.location.href = 'login.html';
-                };
-            }
+            // Azione di Blocco con MODALE INTERNO
+            const lockAction = async (e) => {
+                e.preventDefault();
+                await window.showCustomAlert("Accesso Riservato", "Effettua il Login per prenotare.");
+                window.location.href = 'login.html';
+            };
+
+            if(deskBooking) deskBooking.onclick = lockAction;
+            if(mobBooking && !mobBooking.classList.contains('hamburger')) mobBooking.onclick = lockAction;
         }
     }
 
-    // Ascolta i cambiamenti
-    if (window.supabase && window.supabase.auth) {
-        window.supabase.auth.onAuthStateChange((event, session) => {
-            updateNavbar(session);
-        });
-        
-        // Controllo iniziale veloce
-        window.supabase.auth.getSession().then(({ data: { session } }) => {
-            updateNavbar(session);
-        });
+    // Monitora stato
+    if (window.supabase) {
+        window.supabase.auth.onAuthStateChange((event, session) => updateNavbar(session));
+        window.supabase.auth.getSession().then(({ data: { session } }) => updateNavbar(session));
     }
 });
+
+// --- C. LOGOUT GLOBALE ---
+window.handleLogout = async function() {
+    const confirmLogout = await window.showCustomConfirm("Logout", "Sei sicuro di voler uscire?");
+    if(confirmLogout && window.supabase) {
+        await window.supabase.auth.signOut();
+        window.location.reload();
+    }
+}

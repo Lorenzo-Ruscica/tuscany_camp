@@ -1,0 +1,412 @@
+/* =========================================
+   9. ENTRY FORM & CONTACT
+   ========================================= */
+.contact-section,
+.entry-section {
+    padding-bottom: 100px;
+}
+
+.contact-wrapper,
+.booking-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* Sinistra larga, Destra stretta */
+    gap: 30px;
+    align-items: start;
+}
+
+/* Specifico per Contact Wrapper (layout diverso) */
+.contact-wrapper {
+    grid-template-columns: 1fr 1.5fr;
+}
+
+.contact-info-card,
+.contact-form-card,
+.form-card {
+    background: rgba(255, 255, 255, .03);
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 20px;
+    padding: 30px;
+    backdrop-filter: blur(10px);
+}
+
+.form-card {
+    margin-bottom: 30px;
+}
+
+.contact-info-card h3,
+.contact-form-card h3,
+.form-card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    margin-bottom: 10px;
+    color: var(--color-white);
+}
+
+.form-card h3 {
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, .1);
+    padding-bottom: 10px;
+}
+
+/* Contact Info Specifics */
+.contact-info-card {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    margin-bottom: 30px;
+    padding-bottom: 10px;
+}
+
+.icon-box.contact-icon { /* Classe specifica per distinguere da info cards */
+    width: 60px;
+    height: 60px;
+    background: rgba(245, 83, 148, .1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-hot-pink);
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    margin-top: 0; /* Reset */
+}
+
+.info-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.info-text h4 {
+    margin: 0 0 5px 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--color-white);
+    line-height: 1;
+    font-family: 'Playfair Display', serif;
+}
+
+.info-text span {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, .8);
+    font-weight: 300;
+    line-height: 1;
+}
+
+/* Social Button (Youtube) */
+.social-wrapper {
+    margin-top: 30px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.yt-btn {
+    width: 70px;
+    height: 70px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.8rem;
+    transition: all 0.3s cubic-bezier(.175, .885, .32, 1.275);
+}
+
+.yt-btn:hover {
+    background: red;
+    border-color: red;
+    transform: scale(1.15);
+    box-shadow: 0 0 30px rgba(255, 0, 0, .6);
+    color: #fff;
+}
+
+/* Form Inputs */
+.contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    flex: 1;
+}
+
+.input-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    font-size: .9rem;
+    color: rgba(255, 255, 255, .8);
+    margin-bottom: 8px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select,
+.contact-form input,
+.contact-form textarea {
+    background: rgba(0, 0, 0, .3);
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 10px;
+    padding: 12px 15px;
+    color: var(--color-white);
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.3s ease;
+    resize: vertical;
+    width: 100%;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    border-color: var(--color-hot-pink);
+    background: rgba(0, 0, 0, .5);
+    box-shadow: 0 0 10px rgba(245, 83, 148, .2);
+}
+
+.form-group select option {
+    background: #1a1a1a;
+    color: #fff;
+}
+
+.form-group input[type="date"],
+.form-group input[type="time"] {
+    color-scheme: dark;
+}
+
+/* Entry Form Specifics */
+.input-label-group strong {
+    color: var(--color-hot-pink);
+    display: block;
+    margin-bottom: 10px;
+    font-size: .95rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.alert-box {
+    background: rgba(220, 53, 69, .15);
+    border: 1px solid #dc3545;
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 40px;
+    color: #fcc;
+}
+
+.alert-box i {
+    font-size: 2rem;
+    color: #dc3545;
+}
+
+.alert-content h4 {
+    margin: 0 0 5px 0;
+    color: #ff6b6b;
+    text-transform: uppercase;
+}
+
+.alert-content p {
+    margin: 0;
+    font-size: .95rem;
+    line-height: 1.4;
+}
+
+/* Logistics Grid */
+.logistics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.log-group h4 {
+    color: var(--color-white);
+    font-size: 1rem;
+    margin-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, .1);
+    padding-bottom: 5px;
+    font-family: 'Playfair Display', serif;
+}
+
+/* Package Selection Custom Radio */
+.package-selection {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.pkg-option input {
+    display: none;
+}
+
+.pkg-box {
+    border: 1px solid rgba(255, 255, 255, .2);
+    border-radius: 10px;
+    padding: 15px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    background: rgba(0, 0, 0, .2);
+}
+
+.pkg-name {
+    font-weight: 700;
+    font-size: .9rem;
+    margin-bottom: 5px;
+}
+
+.pkg-price {
+    font-size: 1.2rem;
+    font-family: 'Playfair Display', serif;
+}
+
+.pkg-option input:checked + .pkg-box {
+    border-color: var(--color-hot-pink);
+    background: rgba(245, 83, 148, .2);
+    box-shadow: 0 0 15px rgba(245, 83, 148, .3);
+}
+
+.basic-box { color: #d63384; }
+.bronze-box { color: #cd7f32; }
+.silver-box { color: silver; }
+.gold-box { color: gold; }
+.platinum-box { color: #e5e4e2; }
+
+.badge {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: var(--color-hot-pink);
+    color: #fff;
+    font-size: .6rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* Extra Row */
+.extra-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, .05);
+    padding: 15px;
+    border-radius: 10px;
+}
+
+.extra-label strong {
+    display: block;
+    color: #fff;
+}
+
+.extra-label span {
+    font-size: .8rem;
+    color: rgba(255, 255, 255, .6);
+}
+
+.extra-input input {
+    width: 60px;
+    text-align: center;
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, .2);
+    color: #fff;
+    padding: 5px;
+    border-radius: 5px;
+}
+
+/* Sticky Summary Card */
+.summary-card {
+    background: rgba(0, 0, 0, .6);
+    border: 1px solid var(--color-hot-pink);
+    border-radius: 20px;
+    padding: 30px;
+    position: sticky;
+    top: 100px;
+    backdrop-filter: blur(15px);
+}
+
+.summary-lines .line {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    color: rgba(255, 255, 255, .8);
+    font-size: .95rem;
+}
+
+.summary-lines hr {
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, .1);
+    margin: 15px 0;
+}
+
+.summary-lines .total {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--color-hot-pink);
+}
+
+.secure-note {
+    text-align: center;
+    font-size: .8rem;
+    color: #0f0;
+    margin-top: 15px;
+}
+
+/* Modal Pagamento */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, .8);
+    backdrop-filter: blur(5px);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: #1a1a1a;
+    border: 1px solid var(--color-hot-pink);
+    border-radius: 20px;
+    padding: 40px;
+    width: 90%;
+    max-width: 400px;
+    position: relative;
+    text-align: center;
+}
+
+.close-modal {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 30px;
+    color: #fff;
+    cursor: pointer;
+}

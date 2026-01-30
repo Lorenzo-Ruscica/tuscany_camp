@@ -1,0 +1,64 @@
+/* =========================================
+   1. VARIABLES & RESET
+   ========================================= */
+:root {
+    --color-dark-red: #A00E2B;
+    --color-white: #FFF;
+    --color-pink-red: #CC1A69;
+    --color-hot-pink: #F55394;
+    --color-black: #000;
+    --color-plum: #961951;
+    
+    --bg-main: var(--color-black);
+    --text-main: var(--color-white);
+    
+    --primary-gradient: linear-gradient(135deg, var(--color-dark-red), var(--color-pink-red));
+    --accent-gradient: linear-gradient(135deg, var(--color-pink-red), var(--color-hot-pink));
+    
+    --card-bg: rgba(255, 255, 255, 0.03);
+    --card-border: rgba(255, 255, 255, 0.1);
+    --glass-blur: blur(20px);
+    
+    --radius-lg: 30px;
+    --radius-md: 20px;
+    --radius-btn: 50px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    height: 100%;
+    /* Rimosso background nero qui per gestire meglio i livelli */
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    /* FIX SFONDO: Messo transparent per far vedere le forme sotto */
+    background-color: transparent; 
+    color: var(--text-main);
+    overflow-x: hidden;
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    position: relative;
+}
+
+h1, h2, h3, h4 {
+    font-family: 'Playfair Display', serif;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+    transition: 0.3s;
+}
+
+ul {
+    list-style: none;
+}
