@@ -164,3 +164,68 @@
     color: var(--color-white);
     border-color: var(--color-hot-pink);
 }
+
+/* =========================================
+   CTA REGISTRATION SECTION
+   ========================================= */
+.cta-section {
+    padding: 60px 0;
+    position: relative;
+    z-index: 10;
+}
+
+.cta-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--color-hot-pink);
+    border-radius: 30px; /* Un po' meno arrotondato */
+    padding: 40px 30px;  /* Meno spazio interno (Era 60px 40px) */
+    text-align: center;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 0 40px rgba(245, 83, 148, 0.15);
+    max-width: 700px;    /* Più stretto (Era 900px) */
+    margin: 0 auto;
+    transition: transform 0.4s ease;
+}
+
+.cta-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 50px rgba(245, 83, 148, 0.3);
+}
+
+.cta-box h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 3.5rem;
+    color: var(--color-white);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+}
+
+.cta-box p {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 40px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.6;
+}
+
+.btn-large {
+    padding: 18px 50px;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+}
+
+/* Adattamento Mobile */
+@media (max-width: 768px) {
+    .cta-box {
+        padding: 40px 20px;
+        width: 95%;
+    }
+    .cta-box h2 {
+        font-size: 2.5rem;
+    }
+    .cta-box p {
+        font-size: 1rem;
+    }
+}

@@ -93,26 +93,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // --- A. PROTEZIONE PAGINE (Entry Form & Booking) ---
  // --- A. PROTEZIONE PAGINE (Versione Fixata per Modale) ---
+// --- A. PROTEZIONE PAGINE (Fix Sfondo Blur) ---
     async function checkPageProtection() {
+        // Lista pagine protette
         const protectedPages = ['booking.html', 'entry-form.html'];
         const currentPage = window.location.pathname;
 
-        // Verifica se siamo in una pagina protetta
+        // Controlla se siamo in una pagina protetta
         const isProtected = protectedPages.some(page => currentPage.includes(page));
 
         if (isProtected) {
-            // Controlla sessione
+            // Verifica sessione
             const { data: { session } } = await window.supabase.auth.getSession();
             
             if (!session) {
                 // UTENTE NON LOGGATO
                 
-                // 1. Nascondiamo tutto tranne il modale per evitare spoiler
-                const elementsToHide = document.querySelectorAll('header, section, footer, .bg-shapes');
-                elementsToHide.forEach(el => el.style.display = 'none');
+                // 1. Nascondiamo il contenuto sensibile, MA LASCIAMO LO SFONDO (.bg-shapes)
+                // Selezioniamo specificamente header, footer e le sezioni principali
+                const elementsToHide = document.querySelectorAll('header, section, footer, main, .container');
+                
+                elementsToHide.forEach(el => {
+                    // Controllo di sicurezza: non nascondere il modale e non nascondere lo sfondo
+                    if (el.id !== 'custom-modal' && !el.classList.contains('bg-shapes')) {
+                        el.style.display = 'none';
+                    }
+                });
                 
                 // 2. Mostriamo l'avviso elegante
-                // Nota: showCustomAlert è asincrono, aspettiamo che l'utente clicchi OK
                 if (window.showCustomAlert) {
                     await window.showCustomAlert("Area Riservata", "Devi effettuare il Login per accedere a questa pagina.");
                 } else {

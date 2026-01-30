@@ -108,7 +108,9 @@
                     </div>
                     
                     <button type="submit" class="btn btn-primary btn-block">LOG IN</button>
-                    <p class="form-footer"><a href="#">Forgot Password?</a></p>
+                    <div class="form-footer">
+                        <a href="#" id="forgot-link">Forgot Password?</a>
+                    </div>
                 </form>
 
                 <form id="signupForm" class="auth-form">
@@ -168,5 +170,20 @@
             </div>
         </div>
     </div>
+    <div id="reset-modal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+        <h3 style="color:var(--color-hot-pink); margin-bottom:15px;">Reset Password</h3>
+        <p style="margin-bottom:20px; color:rgba(255,255,255,0.8);">Enter your email address to receive a reset link.</p>
+        
+        <div class="form-group" style="margin-bottom:20px;">
+            <input type="email" id="reset-email" placeholder="name@example.com" style="text-align:center;">
+        </div>
+
+        <div class="modal-buttons" style="display:flex; gap:10px; justify-content:center;">
+            <button id="btn-cancel-reset" class="btn btn-outline" style="padding:10px 20px;">Cancel</button>
+            <button id="btn-confirm-reset" class="btn btn-primary" style="padding:10px 20px;">Send Link</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>

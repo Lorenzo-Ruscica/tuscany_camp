@@ -1,16 +1,20 @@
 // ============================================================
 // FILE: auth.js
-// DESCRIZIONE: Login, Signup, Switch Tabs
+// DESCRIZIONE: Login, Signup, Switch Tabs & Password Reset
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    
+    // --- ELEMENTI DOM ---
     const btnLogin = document.getElementById('btn-login');
     const btnSignup = document.getElementById('btn-signup');
     const formLogin = document.getElementById('loginForm');
     const formSignup = document.getElementById('signupForm');
     const authMessage = document.getElementById('authMessage');
 
-    // 1. Switch Tabs
+    // ==========================================
+    // 1. SWITCH TABS (Login <-> Sign Up)
+    // ==========================================
     if (btnLogin && btnSignup) {
         const switchTab = (showLogin) => {
             btnLogin.classList.toggle('active', showLogin);
@@ -24,17 +28,25 @@ document.addEventListener('DOMContentLoaded', () => {
         btnSignup.addEventListener('click', () => switchTab(false));
     }
 
-    // 2. Redirect se già loggato
+    // ==========================================
+    // 2. REDIRECT SE GIÀ LOGGATO
+    // ==========================================
     if (window.supabase) {
         window.supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) window.location.href = 'index.html';
+            if (session) {
+                // Se l'utente è già dentro, lo mandiamo alla home
+                window.location.href = 'index.html';
+            }
         });
     }
 
-    // 3. Registrazione
+    // ==========================================
+    // 3. REGISTRAZIONE (Sign Up)
+    // ==========================================
     if (formSignup) {
         formSignup.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
             const firstName = document.getElementById('regName').value;
             const lastName = document.getElementById('regSurname').value;
             const email = document.getElementById('regEmail').value;
@@ -47,15 +59,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 if (!window.supabase) throw new Error("Supabase non connesso.");
+                
                 const { error } = await window.supabase.auth.signUp({
-                    email, password, options: { data: { first_name: firstName, last_name: lastName } }
+                    email: email,
+                    password: password,
+                    options: { 
+                        data: { first_name: firstName, last_name: lastName } 
+                    }
                 });
+
                 if (error) throw error;
 
                 authMessage.className = "auth-message success";
                 authMessage.innerText = "Registrazione riuscita! Ora puoi fare il Login.";
                 authMessage.style.display = 'block';
                 formSignup.reset();
+                
+                // Passa automaticamente al tab Login dopo 1.5 secondi
                 setTimeout(() => { if(btnLogin) btnLogin.click(); }, 1500);
 
             } catch (err) {
@@ -69,10 +89,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 4. Login
+    // ==========================================
+    // 4. LOGIN (Sign In)
+    // ==========================================
     if (formLogin) {
         formLogin.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             const btn = formLogin.querySelector('button');
@@ -83,8 +106,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 if (!window.supabase) throw new Error("Supabase non connesso.");
-                const { error } = await window.supabase.auth.signInWithPassword({ email, password });
+                
+                const { error } = await window.supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
                 if (error) throw error;
+
+                // Successo -> Vai alla Home
                 window.location.href = "index.html"; 
 
             } catch (err) {
@@ -96,4 +126,88 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // ==========================================
+    // 5. LOGICA PASSWORD DIMENTICATA (Reset)
+    // ==========================================
+    const forgotLink = document.getElementById('forgot-link');
+    const resetModal = document.getElementById('reset-modal');
+    const btnCancelReset = document.getElementById('btn-cancel-reset');
+    const btnConfirmReset = document.getElementById('btn-confirm-reset');
+    const resetEmailInput = document.getElementById('reset-email');
+
+    // A. Apri Modale
+    if (forgotLink && resetModal) {
+        forgotLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            resetModal.style.display = 'flex';
+            if(resetEmailInput) {
+                resetEmailInput.value = ''; // Pulisci campo
+                resetEmailInput.focus();
+            }
+        });
+    }
+
+    // B. Chiudi Modale (Annulla)
+    if (btnCancelReset) {
+        btnCancelReset.addEventListener('click', (e) => {
+            e.preventDefault();
+            if(resetModal) resetModal.style.display = 'none';
+        });
+    }
+
+    // C. Invia Richiesta a Supabase (FIX URL)
+    if (btnConfirmReset) {
+        btnConfirmReset.addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            const email = resetEmailInput.value.trim();
+            if (!email) {
+                alert("Please enter your email.");
+                return;
+            }
+
+            const originalText = btnConfirmReset.innerText;
+            btnConfirmReset.innerText = "Sending...";
+            btnConfirmReset.disabled = true;
+
+            try {
+                // FIX INTELLIGENTE PER GITHUB PAGES:
+                // Sostituiamo 'login.html' con 'account.html' nell'URL attuale.
+                // Questo mantiene la cartella del progetto (es. /tuscany_camp/) se presente.
+                const currentUrl = window.location.href; 
+                const redirectUrl = currentUrl.replace('login.html', 'account.html');
+
+                const { error } = await window.supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: redirectUrl
+                });
+
+                if (error) throw error;
+
+                // Successo
+                if(resetModal) resetModal.style.display = 'none';
+                
+                if(window.showCustomAlert) {
+                    await window.showCustomAlert("Email Sent", "Check your inbox for the password reset link.");
+                } else {
+                    alert("Check your inbox for the password reset link.");
+                }
+
+            } catch (err) {
+                console.error("Reset Error:", err);
+                alert("Error: " + err.message);
+            } finally {
+                btnConfirmReset.innerText = originalText;
+                btnConfirmReset.disabled = false;
+            }
+        });
+    }
+
+    // D. Chiudi modale cliccando fuori
+    window.addEventListener('click', (e) => {
+        if (resetModal && e.target === resetModal) {
+            resetModal.style.display = 'none';
+        }
+    });
+
 });
