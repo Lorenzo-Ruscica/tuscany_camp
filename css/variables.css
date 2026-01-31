@@ -110,29 +110,44 @@ ul {
     -webkit-tap-highlight-color: transparent;
 }
 
+/* =========================================
+   FIX SFONDO MOBILE (WHITE FLASH)
+   ========================================= */
+
 html {
     height: 100%;
-    /* Rimosso background nero qui per gestire meglio i livelli */
+    /* FONDAMENTALE: Imposta il colore della "tela" del browser su nero.
+       Così quando la barra degli indirizzi si muove, sotto non vedrai mai il bianco. */
+    background-color: var(--color-black); 
+    
+    /* Blocca il rimbalzo elastico che spesso mostra lo sfondo sotto */
+    overscroll-behavior: none;
 }
 
 body {
     font-family: 'Outfit', sans-serif;
-    /* FIX SFONDO: Messo transparent per far vedere le forme sotto */
+    
+    /* Il body resta trasparente per permettere di vedere le forme (.bg-shapes) */
     background-color: transparent; 
+    
     color: var(--text-main);
     overflow-x: hidden;
     line-height: 1.6;
+    
+    /* Usa min-height 100vh per coprire sempre tutto lo schermo */
     min-height: 100vh;
+    
     display: flex;
     flex-direction: column;
     margin: 0;
     position: relative;
 
-    /* FIX MOBILE 2: Impedisce di selezionare il testo per sbaglio mentre scorri */
-    -webkit-user-select: none; /* Safari */
-    -moz-user-select: none;    /* Firefox */
-    -ms-user-select: none;     /* IE10+/Edge */
-    user-select: none;         /* Standard */
+    /* Le regole anti-selezione che abbiamo messo prima */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 /* IMPORTANTE: Riabilita la selezione dentro i campi Input e Textarea 
