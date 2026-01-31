@@ -70,9 +70,18 @@
     .hero-right-col { width: 100%; }
     .event-date-box { padding: 20px; }
 }
+
 /* =========================================
-   MENU MOBILE SIDEBAR (AGGIUNTA MANCANTE)
+   MENU MOBILE SIDEBAR (AGGIORNATO)
    ========================================= */
+
+/* 1. CLASSE PER BLOCCARE LO SCROLL DEL SITO */
+/* Questa classe viene aggiunta al BODY via JS quando il menu è aperto */
+body.no-scroll {
+    overflow: hidden !important;
+    height: 100vh;
+    touch-action: none; /* Disabilita gesture extra su iOS */
+}
 
 /* Hamburger Icon */
 .hamburger {
@@ -116,7 +125,11 @@
     right: 0;
     width: 85%;
     max-width: 350px;
-    height: 100vh;
+    
+    /* FIX ALTEZZA: Usa 100dvh per adattarsi alle barre di sistema mobili (Chrome/Safari) */
+    height: 100vh;      /* Fallback */
+    height: 100dvh;     /* Moderno */
+    
     background-color: #000;
     border-left: 1px solid var(--color-hot-pink);
     z-index: 1500;
@@ -126,6 +139,9 @@
     flex-direction: column;
     padding: 140px 40px 40px; /* Spazio in alto per non coprire la X */
     box-shadow: -20px 0 50px rgba(0, 0, 0, 0.9);
+
+    /* FIX SCROLL INTERNO: Se il telefono è piccolo/orizzontale, il menu scorre */
+    overflow-y: auto; 
 }
 
 .mobile-menu.active {
@@ -137,6 +153,8 @@
     display: flex;
     flex-direction: column;
     gap: 25px;
+    /* Assicura che i link abbiano spazio */
+    min-height: min-content; 
 }
 
 .mobile-links-container a {
@@ -173,6 +191,8 @@
 .mobile-menu-overlay.active {
     opacity: 1;
     pointer-events: all;
+    /* Blocca anche qui l'interazione con sotto */
+    touch-action: none;
 }
 
 /* REGOLE DI VISIBILITÀ (Media Queries) */
@@ -190,6 +210,7 @@
         justify-content: flex-end;
     }
 }
+
 /* =========================================
    FIX SFONDO SU MOBILE (Riduzione Pallini)
    ========================================= */
@@ -227,6 +248,7 @@
         animation-duration: 15s; 
     }
 }
+
 /* Stile per bottone pericolo nel modale */
 .btn-danger {
     background: linear-gradient(135deg, #dc3545, #a71d2a) !important;
@@ -273,6 +295,7 @@
 a:hover .user-avatar {
     text-decoration: none;
 }
+
 /* --- STILE PER LINK ACCOUNT MOBILE --- */
 .mobile-auth-item {
     display: flex;
