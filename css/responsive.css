@@ -247,6 +247,32 @@ body.no-scroll {
     .shape {
         animation-duration: 15s; 
     }
+    /* ... dentro @media (max-width: 768px) ... */
+
+    /* FIX PULSANTI HERO MOBILE */
+    .cta-group {
+        flex-direction: column; /* Li mette uno sotto l'altro */
+        gap: 15px;              /* Spazio tra i due pulsanti */
+        width: 100%;            /* Occupa tutto lo spazio */
+        align-items: center;    /* Li centra */
+    }
+
+    .cta-group .btn {
+        width: 100%;           /* Si allargano per riempire lo spazio... */
+        max-width: 280px;      /* ...ma non superano i 280px (così restano eleganti) */
+        padding: 15px 20px;    /* Riduciamo l'imbottitura (era troppo grossa) */
+        font-size: 1rem;       /* Testo leggibile ma non gigante */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 !important;  /* Rimuove margini strani se ce ne sono */
+    }
+    
+    /* Riduce un po' il testo del titolo principale per dare spazio */
+    .hero-text h1 {
+        font-size: 3rem; 
+        line-height: 1.2;
+    }
 }
 
 /* Stile per bottone pericolo nel modale */
