@@ -63,7 +63,6 @@
     .countdown-wrapper { gap: 10px; }
     .countdown-item { width: 70px; height: 70px; }
     .countdown-item span { font-size: 1.5rem; }
-    /* ... dentro @media (max-width: 768px) ... */
 
     /* FIX PULSANTI HERO MOBILE */
     .cta-group {
@@ -88,6 +87,52 @@
     .hero-text h1 {
         font-size: 3rem; 
         line-height: 1.2;
+    }
+    /* ... dentro @media (max-width: 768px) ... */
+
+    /* FIX PROGRAMMA MOBILE: 2 COLONNE */
+    .program-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr !important; /* Forza 2 colonne uguali */
+        gap: 15px;       /* Spazio ridotto tra le card (era 40px) */
+        padding: 0 10px; /* Margine laterale minimo */
+    }
+
+    .program-card {
+        width: 100%;
+        margin: 0;       /* Rimuove margini extra */
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Immagini più basse e proporzionate */
+    .program-card img {
+        height: 150px;       /* Riduciamo l'altezza (desktop è più alto) */
+        width: 100%;
+        object-fit: cover;   /* Taglio netto senza deformare */
+        border-radius: var(--radius-md); /* Arrotondamento leggermente minore */
+    }
+
+    /* Titoli più piccoli per non andare a capo troppe volte */
+    .program-card h3 {
+        font-size: 1.2rem;   /* Ridotto da 1.8rem */
+        margin-top: 10px;
+        margin-bottom: 5px;
+        line-height: 1.2;
+    }
+    
+    /* Testo descrittivo compatto */
+    .program-card p {
+        font-size: 0.85rem;  /* Testo più piccolo (circa 13-14px) */
+        line-height: 1.4;
+        padding: 0 2px;
+        opacity: 0.9;        /* Leggera trasparenza per eleganza */
+    }
+    .hero-sticker, .badge-container img { 
+        width: 80px !important;       /* Riduciamo le dimensioni (era probabilmente 120px+) */
+        height: 80px !important;      
+        right: 15px !important;       /* Lo stacchiamo dal bordo destro */
+        top: 90px !important;         /* Lo abbassiamo un po' per non coprire il menu se serve */
     }
 }
 
