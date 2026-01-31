@@ -32,15 +32,21 @@
     background: var(--accent-gradient);
 }
 
+/* Stile base per il bottone Cancel/Outline */
 .btn-outline {
+    background: transparent; /* Sfondo trasparente */
     border: 2px solid var(--color-hot-pink);
-    color: var(--color-white);
-    margin-left: 15px;
+    color: var(--color-white); /* Testo bianco */
+    margin-left: 10px; /* Spazio tra i bottoni */
+    transition: all 0.3s ease;
 }
 
+/* Quando passi sopra col mouse (Hover) */
 .btn-outline:hover {
-    background: var(--color-hot-pink);
-    color: var(--color-black);
+    background: var(--color-hot-pink); /* Sfondo diventa rosa */
+    color: var(--color-white); /* Testo rimane bianco */
+    box-shadow: 0 0 15px rgba(245, 83, 148, 0.4); /* Effetto glow */
+    border-color: var(--color-hot-pink);
 }
 
 /* Bottone Login nell'header (se usato) */
