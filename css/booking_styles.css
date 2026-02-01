@@ -1,0 +1,215 @@
+/* LAYOUT CONTENITORE CENTRALE */
+.booking-container-vertical {
+    max-width: 800px; /* Larghezza massima per non farlo sembrare stirato */
+    margin: 0 auto;   /* Centrato */
+    display: flex;
+    flex-direction: column;
+    gap: 50px;        /* Spazio tra il form e il riepilogo */
+}
+
+/* FORM AREA (Stile pulito) */
+.booking-form-area {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 30px;
+}
+
+/* --- NUOVO RIEPILOGO "HIGH VISIBILITY" --- */
+.my-bookings-area-wide {
+    width: 100%;
+}
+
+.summary-card-wide {
+    background: linear-gradient(145deg, rgba(30, 30, 30, 0.9), rgba(0, 0, 0, 0.9));
+    border: 2px solid var(--color-hot-pink); /* Bordo colorato evidente */
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 0 30px rgba(245, 83, 148, 0.15); /* Alone luminoso */
+    position: relative;
+    overflow: hidden;
+}
+
+/* Etichetta decorativa "MY SCHEDULE" sullo sfondo */
+.summary-card-wide::before {
+    content: 'SCHEDULE';
+    position: absolute;
+    top: -10px;
+    right: 20px;
+    font-size: 5rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.03);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.summary-header {
+    margin-bottom: 30px;
+    position: relative;
+    z-index: 1;
+    text-align: center;
+}
+
+.summary-header h3 {
+    font-size: 2rem;
+    color: white;
+    margin-bottom: 5px;
+    font-family: 'Playfair Display', serif;
+}
+
+.summary-header p {
+    color: rgba(255,255,255,0.6);
+}
+
+/* GRIGLIA DELLE LEZIONI (Invece di lista verticale, le mettiamo a coppie se c'è spazio) */
+.bookings-list-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Responsive */
+    gap: 15px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Stile del singolo blocco lezione */
+.booking-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 5px solid var(--color-hot-pink);
+    padding: 20px;
+    border-radius: 0 10px 10px 0;
+    transition: transform 0.2s ease;
+}
+
+.booking-item:hover {
+    transform: translateY(-3px);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.booking-item h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: white;
+}
+
+.booking-item .details {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 8px 0;
+}
+
+.booking-item .price {
+    font-weight: 700;
+    color: var(--color-hot-pink);
+    font-size: 1.2rem;
+    float: right;
+}
+
+/* DIVISORE E TOTALE */
+.divider-glow {
+    border: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--color-hot-pink), transparent);
+    margin: 30px 0;
+    opacity: 0.5;
+}
+
+.total-row-big {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 2rem; /* Totale bello grosso */
+    font-weight: 700;
+    font-family: 'Playfair Display', serif;
+    color: white;
+    padding: 0 20px;
+}
+
+#grand-total-display {
+    color: var(--color-hot-pink);
+    text-shadow: 0 0 10px rgba(245, 83, 148, 0.5);
+}
+
+.payment-info {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.9rem;
+    color: #4cd137; /* Verde per indicare info positiva/sicura */
+    background: rgba(76, 209, 55, 0.1);
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(76, 209, 55, 0.3);
+}
+
+/* GLI STILI DELLE DATE/SLOT (Quelli che avevamo già, assicurati che ci siano) */
+.dates-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.date-btn { 
+    background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px; padding: 12px 20px; text-align: center; cursor: pointer; color: white; flex: 1; min-width: 100px;
+}
+.date-btn:hover { border-color: var(--color-hot-pink); background: rgba(245, 83, 148, 0.1); }
+.date-btn.selected { background: var(--color-hot-pink); border-color: var(--color-hot-pink); font-weight: 700; }
+
+.slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-top: 10px; }
+.time-slot { 
+    background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); 
+    border-radius: 8px; padding: 10px 5px; text-align: center; cursor: pointer; color: white;
+}
+.time-slot:hover { border-color: var(--color-hot-pink); background: rgba(245, 83, 148, 0.1); }
+.time-slot.selected { background: var(--color-hot-pink); border-color: var(--color-hot-pink); font-weight: 700; }
+.time-slot.taken { background: rgba(0,0,0,0.3); color: rgba(255,255,255,0.2); text-decoration: line-through; cursor: not-allowed; }
+.btn-delete { background: none; border: none; color: #666; cursor: pointer; float: right; font-size: 1.2rem; }
+.btn-delete:hover { color: red; }
+.booking-actions {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.btn-edit {
+    background: none;
+    border: none;
+    color: #ff9f43; /* Arancione per la modifica */
+    cursor: pointer;
+    font-size: 1rem;
+    transition: 0.3s;
+}
+
+.btn-edit:hover {
+    color: #ffb167;
+    transform: scale(1.2);
+}
+
+.booking-item {
+    position: relative; /* Necessario per posizionare .booking-actions */
+}
+/* MODALE ADMIN */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-box {
+    background: #1e1e1e;
+    padding: 30px;
+    border-radius: 10px;
+    border: 1px solid #f55394;
+    width: 400px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+.modal-box h2 {
+    margin-top: 0;
+    color: #f55394;
+    margin-bottom: 20px;
+}
+
+.modal-box .form-group {
+    margin-bottom: 15px;
+}

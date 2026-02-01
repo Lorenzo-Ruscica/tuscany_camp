@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Lessons | Tuscany Camp</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&family=Playfair+Display:ital,wght@1,400;1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/background.css">
+    <link rel="stylesheet" href="css/ui_bottons.css">
+    <link rel="stylesheet" href="css/header_nav.css">
+    <link rel="stylesheet" href="css/global_footer.css">
+    <link rel="stylesheet" href="css/specific_pages.css"> 
+    <link rel="stylesheet" href="css/entryform_contact.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    
+    <link rel="stylesheet" href="css/booking_styles.css"> 
+</head>
+<body>
+
+    <div id="access-loader" class="modal" style="display: flex;">
+        <div class="modal-content" style="text-align: center;">
+            <i class="fas fa-circle-notch fa-spin" style="font-size: 3rem; color: var(--color-hot-pink);"></i>
+            <h3 style="margin-top: 20px;">Checking Registration...</h3>
+        </div>
+    </div>
+<header id="navbar">
+        <div class="nav-container">
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="programma.html">Program</a></li>
+                    <li><a href="guest-teachers.html">Guest Teachers</a></li>
+                    <li><a href="packages.html">Packages</a></li>
+                    <li><a href="entry-form.html">Entry Form</a></li>
+                    <li><a href="booking.html" id="nav-booking" class="active">Book Lesson</a></li>
+                    <li><a href="photogallery.html">Photogallery</a></li>
+                    <li><a href="contatti.html">Contact</a></li>
+                    
+                    <li>
+                        <a href="login.html" id="nav-auth-link" style="display: flex; align-items: center;">
+                            <i class="fas fa-user" style="font-size: 1.2rem;"></i>
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <div class="mobile-menu-overlay"></div>
+    <div class="mobile-menu">
+        <div class="mobile-links-container">
+            <a href="index.html">Home</a>   
+            <a href="programma.html">Program</a>
+            <a href="guest-teachers.html">Guest Teachers</a>
+            <a href="packages.html">Packages</a>
+            <a href="entry-form.html">Entry Form</a>
+            <a href="booking.html" id="mobile-booking" class="active">Book Lesson</a>
+            <a href="photogallery.html">Photogallery</a>
+            <a href="contatti.html">Contact</a>
+
+            <a href="login.html" class="active" id="mobile-auth-link" class="mobile-auth-item">
+                <i class="fas fa-user"></i> <span>Account</span>
+            </a>
+        </div>
+    </div>
+<section class="booking-section" style="padding-top: 150px; padding-bottom: 100px;">
+        <div class="container">
+            
+            <h1 class="main-title text-center">Private <span class="gradient-text">Lessons</span></h1>
+            
+            <div id="access-denied-box" class="access-denied-card fade-in-up" style="display: none;">
+                <div class="icon-wrapper">
+                    <i class="fas fa-user-lock"></i>
+                </div>
+                <h2>Registration Required</h2>
+                <p>To book private lessons, you must first complete the Camp Entry Form.</p>
+                <p>It only takes a minute!</p>
+                <a href="entry-form.html" class="btn btn-primary">GO TO ENTRY FORM</a>
+            </div>
+
+            <div id="booking-main-content" style="display: none;">
+                <p class="text-center" style="margin-bottom: 50px;">Select a teacher and book your slot.</p>
+
+                <div class="booking-container-vertical">
+                
+                <div class="booking-form-area form-card">
+                    <h3><i class="fas fa-calendar-plus"></i> New Booking</h3>
+                    
+                    <div class="form-group">
+                        <label>Select Teacher</label>
+                        <select id="teacherSelect">
+                            <option value="" disabled selected>Loading teachers...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="dateGroup" style="opacity: 0.5; pointer-events: none;">
+                        <label>Select Date</label>
+                        <div id="dates-container" class="dates-grid">
+                            <div class="slot-placeholder">Select a teacher first</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="timeGroup" style="opacity: 0.5; pointer-events: none;">
+                        <label>Available Slots (45 min)</label>
+                        <div id="slots-container" class="slots-grid">
+                            <div class="slot-placeholder">Select a date first</div>
+                        </div>
+                    </div>
+
+                    <button id="btn-confirm-booking" class="btn btn-primary btn-block" style="display: none; margin-top: 20px;">
+                        CONFIRM BOOKING (€ <span id="price-preview">0</span>)
+                    </button>
+                </div>
+
+                <div class="my-bookings-area-wide">
+                    <div class="summary-card-wide">
+                        <div class="summary-header">
+                            <h3><i class="fas fa-list-check"></i> Your Booked Lessons</h3>
+                            <p>Check your schedule and total amount.</p>
+                        </div>
+                        
+                        <div id="my-bookings-list" class="bookings-list-grid">
+                            <p style="text-align: center; opacity: 0.6; width:100%;">No lessons booked yet.</p>
+                        </div>
+
+                        <hr class="divider-glow">
+                        
+                        <div class="total-row-big">
+                            <span>TOTAL DUE:</span>
+                            <span id="grand-total-display">€ 0</span>
+                        </div>
+                        
+                        <div class="payment-info">
+                            <i class="fas fa-wallet"></i> Payment is settled directly at the Tuscany Camp desk.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+    </section>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="javascript/config.js"></script>
+    <script src="javascript/main.js"></script>
+    <script src="javascript/booking.js"></script> </body>
+</html>

@@ -1,0 +1,224 @@
+/* RESET E BASE DARK */
+body {
+    margin: 0;
+    font-family: 'Outfit', sans-serif;
+    background-color: #121212;
+    color: white;
+}
+
+.admin-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 250px;
+    background: #000;
+    border-right: 1px solid #333;
+    padding: 20px;
+    flex-shrink: 0;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #f55394; /* Hot Pink */
+    margin-bottom: 40px;
+    letter-spacing: 2px;
+}
+
+.nav-btn {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    color: #888;
+    text-align: left;
+    padding: 15px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: 0.3s;
+    border-radius: 8px;
+    margin-bottom: 5px;
+}
+
+.nav-btn:hover, .nav-btn.active {
+    background: rgba(245, 83, 148, 0.1);
+    color: #fff;
+}
+
+.nav-btn i { width: 25px; }
+
+/* CONTENT */
+.content {
+    flex-grow: 1;
+    padding: 40px;
+    overflow-y: auto;
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.5s; }
+
+@keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+
+/* FORM CARDS */
+.card {
+    background: #1e1e1e;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    border: 1px solid #333;
+}
+
+.form-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-size: 0.8rem;
+    color: #aaa;
+    margin-bottom: 5px;
+}
+
+input, select {
+    background: #333;
+    border: 1px solid #444;
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.btn-add {
+    background: #f55394;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* LISTE E TABELLE DASHBOARD */
+.list-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.shift-card {
+    background: #222;
+    padding: 10px;
+    border-left: 3px solid #f55394;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    position: relative;
+}
+
+.btn-delete-mini {
+    position: absolute;
+    top: 5px; right: 5px;
+    background: none; border: none;
+    color: #666; cursor: pointer;
+}
+.btn-delete-mini:hover { color: red; }
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.admin-table th, .admin-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #333;
+}
+
+.admin-table th { background: #1a1a1a; color: #f55394; }
+
+/* --- SEZIONE STAMPA (IL FOGLIO A4) --- */
+.print-sheet {
+    background: white;
+    color: black;
+    padding: 40px;
+    margin-top: 20px;
+    border-radius: 5px;
+    min-height: 800px; /* Altezza A4 approx */
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+.print-header {
+    display: flex;
+    align-items: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+}
+
+.print-header img { height: 60px; margin-right: 20px; }
+
+.schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.schedule-table th, .schedule-table td {
+    border: 1px solid #000;
+    padding: 10px;
+    text-align: left;
+    color: black;
+}
+
+.schedule-table th { background: #eee; font-weight: bold; }
+
+.print-footer {
+    margin-top: 50px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #555;
+    border-top: 1px solid #ccc;
+    padding-top: 10px;
+}
+
+.btn-print {
+    background: #fff;
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-left: 20px;
+}
+
+/* =========================================
+   STAMPA REALE (CTRL+P)
+   ========================================= */
+@media print {
+    body { background: white; color: black; }
+    .sidebar, .no-print, .btn-add, .warning-text, .search-bar, .admin-table {
+        display: none !important;
+    }
+    
+    .admin-container { display: block; }
+    .content { padding: 0; margin: 0; }
+    
+    .tab-content { display: none; }
+    #tab-schedule { display: block !important; } /* Forza mostra tab schedule */
+    
+    .print-sheet {
+        box-shadow: none;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+    }
+}

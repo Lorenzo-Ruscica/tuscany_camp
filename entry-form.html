@@ -13,17 +13,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;800&family=Playfair+Display:ital,wght@1,400;1,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-<link rel="stylesheet" href="css/variables.css">
-<link rel="stylesheet" href="css/background.css">
-<link rel="stylesheet" href="css/ui_bottons.css">
-<link rel="stylesheet" href="css/animazioni_utils.css">
-<link rel="stylesheet" href="css/header_nav.css">
-<link rel="stylesheet" href="css/global_footer.css">
-<link rel="stylesheet" href="css/specific_pages.css"> 
-<link rel="stylesheet" href="css/entryform_contact.css">
-<link rel="stylesheet" href="css/auth_page.css"> 
-<link rel="stylesheet" href="css/responsive.css">
-<link rel="stylesheet" href="css/hero_section.css"> 
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/background.css">
+    <link rel="stylesheet" href="css/ui_bottons.css">
+    <link rel="stylesheet" href="css/animazioni_utils.css">
+    <link rel="stylesheet" href="css/header_nav.css">
+    <link rel="stylesheet" href="css/global_footer.css">
+    <link rel="stylesheet" href="css/specific_pages.css"> 
+    <link rel="stylesheet" href="css/entryform_contact.css">
+    <link rel="stylesheet" href="css/auth_page.css"> 
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/hero_section.css"> 
 </head>
 <body>
 
@@ -33,7 +33,7 @@
         <div class="shape shape-3"></div>
     </div>
 
-<header id="navbar">
+    <header id="navbar">
         <div class="nav-container">
             <nav>
                 <ul class="nav-links">
@@ -45,18 +45,14 @@
                     <li><a href="booking.html" id="nav-booking">Book Lesson</a></li>
                     <li><a href="photogallery.html">Photogallery</a></li>
                     <li><a href="contatti.html">Contact</a></li>
-                    
                     <li>
                         <a href="login.html" id="nav-auth-link" style="display: flex; align-items: center;">
                             <i class="fas fa-user" style="font-size: 1.2rem;"></i>
                         </a>
                     </li>
                 </ul>
-
                 <div class="hamburger">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+                    <span></span><span></span><span></span>
                 </div>
             </nav>
         </div>
@@ -73,12 +69,12 @@
             <a href="booking.html" id="mobile-booking">Book Lesson</a>
             <a href="photogallery.html">Photogallery</a>
             <a href="contatti.html">Contact</a>
-
             <a href="login.html" class="active" id="mobile-auth-link" class="mobile-auth-item">
                 <i class="fas fa-user"></i> <span>Account</span>
             </a>
         </div>
     </div>
+
     <section class="page-hero">
         <div class="container text-center">
             <h1 class="main-title fade-in-up">Entry <span class="gradient-text">Form</span></h1>
@@ -87,7 +83,7 @@
         </div>
     </section>
 
-<section class="entry-section">
+    <section class="entry-section">
         <div class="container">
             
             <div class="alert-box fade-in-up delay-3">
@@ -98,53 +94,49 @@
                 </div>
             </div>
 
-            <form id="bookingForm" class="booking-grid">
+            <form id="entryForm" class="booking-grid">
                 
                 <div class="form-column-left">
                     
                     <div class="form-card scroll-animate">
                         <h3>1. Couple Details</h3>
                         
-                        <div class="input-label-group">
-                            <strong>Man / Cavaliere</strong>
-                        </div>
+                        <div class="input-label-group"><strong>Man / Cavaliere</strong></div>
                         <div class="input-row">
                             <div class="form-group">
                                 <label>Man's Name</label>
-                                <input type="text" name="manName" required placeholder="Name">
+                                <input type="text" id="manName" name="manName" required placeholder="Name">
                             </div>
                             <div class="form-group">
                                 <label>Man's Surname</label>
-                                <input type="text" name="manSurname" required placeholder="Surname">
+                                <input type="text" id="manSurname" name="manSurname" required placeholder="Surname">
                             </div>
                         </div>
 
-                        <div class="input-label-group" style="margin-top: 15px;">
-                            <strong>Female / Dama</strong>
-                        </div>
+                        <div class="input-label-group" style="margin-top: 15px;"><strong>Female / Dama</strong></div>
                         <div class="input-row">
                             <div class="form-group">
                                 <label>Female Name</label>
-                                <input type="text" name="femaleName" required placeholder="Name">
+                                <input type="text" id="femaleName" name="femaleName" required placeholder="Name">
                             </div>
                             <div class="form-group">
                                 <label>Female Surname</label>
-                                <input type="text" name="femaleSurname" required placeholder="Surname">
+                                <input type="text" id="femaleSurname" name="femaleSurname" required placeholder="Surname">
                             </div>
                         </div>
 
                         <div class="input-row" style="margin-top: 20px;">
                             <div class="form-group">
                                 <label>Country</label>
-                                <input type="text" name="country" required placeholder="Italy">
+                                <input type="text" id="country" name="country" required placeholder="Italy">
                             </div>
                             <div class="form-group">
                                 <label>Teacher's Name</label>
-                                <input type="text" name="teacherName" required placeholder="Your Teacher">
+                                <input type="text" id="teacherName" name="teacherName" required placeholder="Your Teacher">
                             </div>
                             <div class="form-group">
                                 <label>Age Group</label>
-                                <select name="ageGroup" required>
+                                <select id="ageGroup" name="ageGroup" required>
                                     <option value="" disabled selected>Select...</option>
                                     <option value="Under 16">Under 16</option>
                                     <option value="Under 21">Under 21</option>
@@ -162,11 +154,11 @@
                         <div class="input-row">
                             <div class="form-group">
                                 <label>Phone Number</label>
-                                <input type="tel" name="phone" required placeholder="+39 ...">
+                                <input type="tel" id="phone" name="phone" required placeholder="+39 ...">
                             </div>
                             <div class="form-group">
                                 <label>Email *</label>
-                                <input type="email" name="email" required placeholder="email@example.com">
+                                <input type="email" id="email" name="email" required placeholder="email@example.com">
                             </div>
                         </div>
                     </div>
@@ -177,21 +169,21 @@
                         
                         <div class="package-selection">
                             <label class="pkg-option">
-                                <input type="radio" name="package" value="65" data-name="Basic Package">
+                                <input type="radio" name="package" value="Basic" data-price="65" required>
                                 <div class="pkg-box basic-box">
                                     <div class="pkg-name">BASIC</div>
                                     <div class="pkg-price">€ 65</div>
                                 </div>
                             </label>
                             <label class="pkg-option">
-                                <input type="radio" name="package" value="100" data-name="Bronze Package">
+                                <input type="radio" name="package" value="Bronze" data-price="100">
                                 <div class="pkg-box bronze-box">
                                     <div class="pkg-name">BRONZE</div>
                                     <div class="pkg-price">€ 100</div>
                                 </div>
                             </label>
                             <label class="pkg-option">
-                                <input type="radio" name="package" value="160" data-name="Silver Package" checked>
+                                <input type="radio" name="package" value="Silver" data-price="160" checked>
                                 <div class="pkg-box silver-box">
                                     <div class="pkg-name">SILVER</div>
                                     <div class="pkg-price">€ 160</div>
@@ -199,14 +191,14 @@
                                 </div>
                             </label>
                             <label class="pkg-option">
-                                <input type="radio" name="package" value="220" data-name="Gold Package">
+                                <input type="radio" name="package" value="Gold" data-price="220">
                                 <div class="pkg-box gold-box">
                                     <div class="pkg-name">GOLD</div>
                                     <div class="pkg-price">€ 220</div>
                                 </div>
                             </label>
                             <label class="pkg-option">
-                                <input type="radio" name="package" value="270" data-name="Platinum Package">
+                                <input type="radio" name="package" value="Platinum" data-price="270">
                                 <div class="pkg-box platinum-box">
                                     <div class="pkg-name">PLATINUM</div>
                                     <div class="pkg-price">€ 270</div>
@@ -257,9 +249,7 @@
                                 </div>
                             </div>
                         </div>
-
                     </div>
-
                 </div>
 
                 <div class="form-column-right">
@@ -268,21 +258,21 @@
                         
                         <div class="summary-lines">
                             <div class="line">
-                                <span id="selectedPkgName">Silver Package</span>
-                                <span id="selectedPkgPrice">€ 160</span>
+                                <span id="summary-pkg-name">Silver Package</span>
+                                <span id="summary-pkg-price">€ 160</span>
                             </div>
                             <div class="line">
-                                <span>Extra Nights (x<span id="nightCount">0</span>)</span>
-                                <span id="nightTotal">€ 0</span>
+                                <span>Extra Nights (x<span id="summary-night-count">0</span>)</span>
+                                <span id="summary-night-total">€ 0</span>
                             </div>
                             <hr>
                             <div class="line total">
                                 <span>TOTAL</span>
-                                <span id="grandTotal">€ 160</span>
+                                <span id="summary-total">€ 160</span>
                             </div>
                         </div>
 
-                        <button type="button" class="btn btn-primary btn-block" onclick="openPaymentModal()">
+                        <button type="submit" id="btnProceed" class="btn btn-primary btn-block">
                             PROCEED TO PAYMENT
                         </button>
                         
@@ -300,37 +290,7 @@
             <h3>Secure Checkout</h3>
             <p>Total Amount: <strong id="modalTotal" style="color:var(--color-hot-pink)">€ 160</strong></p>
             
-            <form class="payment-form">
-                <div class="form-group">
-                    <label>Cardholder Name</label>
-                    <input type="text" placeholder="Mario Rossi" required>
-                </div>
-                <div class="form-group">
-                    <label>Card Number</label>
-                    <input type="text" placeholder="0000 0000 0000 0000" required>
-                </div>
-                <div class="input-row">
-                    <div class="form-group">
-                        <label>Expiry</label>
-                        <input type="text" placeholder="MM/YY" required style="width: 100px;">
-                    </div>
-                    <div class="form-group">
-                        <label>CVV</label>
-                        <input type="text" placeholder="123" required style="width: 80px;">
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block" style="margin-top: 20px;">PAY NOW</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="paymentModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal">&times;</span>
-            <h3>Secure Checkout</h3>
-            <p>Total Amount: <strong id="modalTotal" style="color:var(--color-hot-pink)">€ 160</strong></p>
-            
-            <form class="payment-form" onsubmit="event.preventDefault(); alert('Payment Simulation: Success! Confirmation Email Sent.'); location.reload();">
+            <form id="paymentForm" class="payment-form">
                 <div class="form-group">
                     <label>Cardholder Name</label>
                     <input type="text" placeholder="Mario Rossi" required>
@@ -363,44 +323,29 @@
                 </div>
                 <div class="footer-info">
                     <h3>Contact Us</h3>
-                    <p>
-                        <a href="#" id="email-copy" data-email="tuscanycamp@gmail.com">
-                            <i class="fas fa-envelope"></i> tuscanycamp@gmail.com
-                        </a>
-                    </p>
-                    <p>
-                        <a href="#" id="phone-copy" data-number="+39 335 123 4567">
-                            <i class="fas fa-phone"></i> +39 335 123 4567
-                        </a>
-                    </p>
-                    <a href="https://youtube.com/@wintertuscanycamp2025" target="_blank" class="social-icon">
-                        <i class="fab fa-youtube"></i>
-                    </a>
+                    <p><a href="#" id="email-copy" data-email="tuscanycamp@gmail.com"><i class="fas fa-envelope"></i> tuscanycamp@gmail.com</a></p>
+                    <p><a href="#" id="phone-copy" data-number="+39 335 123 4567"><i class="fas fa-phone"></i> +39 335 123 4567</a></p>
+                    <a href="https://youtube.com/@wintertuscanycamp2025" target="_blank" class="social-icon"><i class="fab fa-youtube"></i></a>
                 </div>
             </div>
-            <div class="copyright">
-                &copy; 2026 Tuscany Camp. Design inspired by the passion for dance.
-            </div>
+            <div class="copyright">&copy; 2026 Tuscany Camp. Design inspired by the passion for dance.</div>
         </div>
     </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="javascript/config.js"></script>
-<script src="javascript/main.js"></script>
-<script src="javascript/entry-formy.js"></script>
-
-
-
-<div id="custom-modal" class="modal" style="display:none;">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script src="javascript/config.js"></script> 
+    <script src="javascript/main.js"></script>
+    <script src="javascript/entry-formy.js"></script> <div id="custom-modal" class="modal" style="display:none;">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
             <h3 id="modal-title" style="color:var(--color-hot-pink); margin-bottom:15px;">Avviso</h3>
             <p id="modal-message" style="margin-bottom:25px; color:rgba(255,255,255,0.8);">Messaggio...</p>
-            
             <div class="modal-buttons" style="display:flex; gap:10px; justify-content:center;">
                 <button id="modal-btn-cancel" class="btn btn-outline" style="padding:10px 20px; display:none;">Annulla</button>
                 <button id="modal-btn-ok" class="btn btn-primary" style="padding:10px 20px;">OK</button>
             </div>
         </div>
     </div>
+
 </body>
 </html>
