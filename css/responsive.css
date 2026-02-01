@@ -134,6 +134,7 @@
         right: 15px !important;       /* Lo stacchiamo dal bordo destro */
         top: 90px !important;         /* Lo abbassiamo un po' per non coprire il menu se serve */
     }
+    
 }
 
 @media (max-width: 480px) {

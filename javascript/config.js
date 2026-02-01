@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 // 2. Mostriamo l'avviso elegante
                 if (window.showCustomAlert) {
-                    await window.showCustomAlert("Area Riservata", "Devi effettuare il Login per accedere a questa pagina.");
+                    await window.showCustomAlert("Reserved Area", "You must log in to access this page.");
                 } else {
                     alert("Devi effettuare il Login per accedere a questa pagina.");
                 }
@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Azione di Blocco con MODALE INTERNO
             const lockAction = async (e) => {
                 e.preventDefault();
-                await window.showCustomAlert("Accesso Riservato", "Effettua il Login per prenotare.");
+                await window.showCustomAlert("Restricted Access", "Log in to book.");
                 window.location.href = 'login.html';
             };
 
