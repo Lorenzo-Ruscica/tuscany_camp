@@ -1,5 +1,5 @@
 // ============================================================
-// FILE: js/admin.js - COMPLETE VERSION (With EmailJS)
+// FILE: js/admin.js - COMPLETE VERSION (With Delete Entry)
 // ============================================================
 
 // 1. VARIABILI GLOBALI
@@ -350,7 +350,7 @@ window.deleteBookingPermanent = async (id) => {
     loadAllBookings();
 };
 
-// --- ALTRE TAB (Messaggi, Iscritti, Teachers) ---
+// --- ALTRE TAB (Messaggi) ---
 window.loadMessages = async () => {
     const { data: msgs } = await window.supabase.from('contacts').select('*').order('created_at', { ascending: false });
     const tbody = document.getElementById('messages-body');
@@ -384,23 +384,101 @@ window.deleteMessage = async (id) => {
     }
 };
 
+// ==========================================
+// SEZIONE: GESTIONE ISCRIZIONI (REGISTRATIONS)
+// ==========================================
 window.loadRegistrations = async () => {
     const { data: regs } = await window.supabase.from('registrations').select('*').order('created_at', { ascending: false });
     const tbody = document.getElementById('registrations-body');
     tbody.innerHTML = '';
     let totalMoney = 0, count = 0;
+    
     if(regs) {
         regs.forEach(r => {
             count++;
             totalMoney += Number(r.total_amount) || 0;
-            tbody.innerHTML += `<tr><td>${new Date(r.created_at).toLocaleDateString()}</td><td><strong>${r.full_name}</strong><br><small>${r.user_email}</small></td><td>${r.role}</td><td>${r.package}</td><td>€ ${r.total_amount}</td><td><span style="color:#0f0">${r.payment_status}</span></td></tr>`;
+            
+            // Generazione Riga con Bottone DELETE
+// Cerca questo pezzo dentro loadRegistrations e AGGIORNALO così:
+tbody.innerHTML += `
+    <tr>
+        <td>${new Date(r.created_at).toLocaleDateString()}</td>
+        <td><strong>${r.full_name}</strong><br><small>${r.user_email}</small></td>
+        <td>${r.role}</td>
+        <td>${r.package}</td>
+        <td>€ ${r.total_amount}</td>
+        <td><span style="color:#0f0">${r.payment_status}</span></td>
+        <td style="text-align: right; white-space: nowrap;">
+            <button onclick="viewRegistrationDetails('${r.id}')" 
+                    style="color:#00d2d3; background:none; border:none; cursor:pointer; margin-right: 10px;" 
+                    title="Vedi Dettagli Completi">
+                <i class="fas fa-eye"></i>
+            </button>
+
+            <button onclick="deleteEntry('${r.id}')" 
+                    style="color:red; background:none; border:none; cursor:pointer;" 
+                    title="Elimina Iscrizione">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    </tr>`;
         });
     }
+    
     const countEl = document.getElementById('total-reg-count');
     const moneyEl = document.getElementById('total-reg-money');
     if(countEl) countEl.innerText = count;
     if(moneyEl) moneyEl.innerText = "€ " + totalMoney;
 };
+
+// ==========================================
+// FUNZIONE CORRETTA: ELIMINAZIONE A CASCATA
+// ==========================================
+window.deleteEntry = async (id) => {
+    const confirmed = confirm("SEI SICURO? \nEliminare questo iscritto cancellerà anche TUTTE le sue prenotazioni e lo storico.\nQuesta azione è irreversibile.");
+    
+    if (!confirmed) return;
+
+    try {
+        // PASSO 1: Dobbiamo trovare lo user_id collegato a questa registrazione
+        const { data: regData, error: fetchError } = await window.supabase
+            .from('registrations')
+            .select('user_id')
+            .eq('id', id)
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        if (regData && regData.user_id) {
+            // PASSO 2: Cancelliamo TUTTE le prenotazioni (bookings) di questo utente
+            const { error: bookingError } = await window.supabase
+                .from('bookings')
+                .delete()
+                .eq('user_id', regData.user_id);
+
+            if (bookingError) {
+                console.warn("Attenzione: errore cancellazione prenotazioni o nessuna prenotazione trovata.", bookingError);
+                // Non blocchiamo, proviamo comunque a cancellare la registrazione
+            }
+        }
+
+        // PASSO 3: Ora che le prenotazioni sono andate, cancelliamo l'iscrizione
+        const { error: regError } = await window.supabase
+            .from('registrations')
+            .delete()
+            .eq('id', id);
+
+        if (regError) throw regError;
+
+        alert("Iscritto e relative prenotazioni eliminati con successo.");
+        loadRegistrations(); // Ricarica la tabella
+
+    } catch (error) {
+        console.error("Errore cancellazione:", error);
+        alert("Errore durante l'eliminazione: " + error.message);
+    }
+};
+
 window.filterRegistrations = () => {
     const input = document.getElementById('search-reg').value.toLowerCase();
     document.querySelectorAll('#registrations-body tr').forEach(row => {
@@ -408,6 +486,7 @@ window.filterRegistrations = () => {
     });
 };
 
+// --- GESTIONE TEACHERS LIST ---
 window.loadTeachersList = async () => {
     const { data: t } = await window.supabase.from('teachers').select('*').order('full_name');
     const tbody = document.getElementById('teachers-list-body');
@@ -519,3 +598,74 @@ async function sendEmailNotification(type, bookingData, userEmail, userName) {
         console.error("EmailJS Error:", error);
     }
 }
+// ==========================================
+// NUOVE FUNZIONI: DETTAGLI ISCRIZIONE
+// ==========================================
+
+window.viewRegistrationDetails = async (id) => {
+    // 1. Apri il modale e mostra caricamento
+    const modal = document.getElementById('reg-details-modal');
+    const content = document.getElementById('reg-details-content');
+    modal.style.display = 'flex';
+    content.innerHTML = '<p style="text-align:center;">Caricamento dati...</p>';
+
+    try {
+        // 2. Prendi TUTTI i dati da Supabase per quell'ID
+        const { data: r, error } = await window.supabase
+            .from('registrations')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+
+        // 3. Genera l'HTML con i dati specifici
+        content.innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 0.9rem;">
+                
+                <div style="grid-column: 1 / -1; margin-bottom: 10px;">
+                    <strong style="color:white; display:block; border-bottom:1px solid #444; padding-bottom:5px;">1. COPPIA</strong>
+                </div>
+                <div><span style="color:#888;">Man:</span> <br> <strong>${r.man_name || '-'} ${r.man_surname || '-'}</strong></div>
+                <div><span style="color:#888;">Woman:</span> <br> <strong>${r.woman_name || '-'} ${r.woman_surname || '-'}</strong></div>
+                <div><span style="color:#888;">Teacher:</span> <br> ${r.teacher || '-'}</div>
+                <div><span style="color:#888;">Country:</span> <br> ${r.country || '-'}</div>
+                <div><span style="color:#888;">Age Group:</span> <br> ${r.age_group || '-'}</div>
+
+                <div style="grid-column: 1 / -1; margin: 10px 0;">
+                    <strong style="color:white; display:block; border-bottom:1px solid #444; padding-bottom:5px;">2. CONTATTI</strong>
+                </div>
+                <div><span style="color:#888;">Email:</span> <br> ${r.user_email || '-'}</div>
+                <div><span style="color:#888;">Phone:</span> <br> ${r.phone || '-'}</div>
+
+                <div style="grid-column: 1 / -1; margin: 10px 0;">
+                    <strong style="color:white; display:block; border-bottom:1px solid #444; padding-bottom:5px;">3. PACCHETTO & COSTI</strong>
+                </div>
+                <div><span style="color:#888;">Package:</span> <br> <span style="color:var(--color-hot-pink); font-weight:bold;">${r.package}</span></div>
+                <div><span style="color:#888;">Extra Nights:</span> <br> ${r.extra_nights || '0'}</div>
+                <div><span style="color:#888;">Total Paid:</span> <br> € ${r.total_amount}</div>
+                <div><span style="color:#888;">Method:</span> <br> ${r.payment_method || '-'}</div>
+
+                <div style="grid-column: 1 / -1; margin: 10px 0;">
+                    <strong style="color:white; display:block; border-bottom:1px solid #444; padding-bottom:5px;">4. LOGISTICA (ARRIVI/PARTENZE)</strong>
+                </div>
+                <div><span style="color:#888;">Arrival:</span> <br> ${r.arrival_date || 'N/A'} <small>(${r.arrival_time || '--:--'})</small></div>
+                <div><span style="color:#888;">Departure:</span> <br> ${r.departure_date || 'N/A'} <small>(${r.departure_time || '--:--'})</small></div>
+            </div>
+        `;
+
+    } catch (err) {
+        console.error(err);
+        content.innerHTML = `<p style="color:red;">Errore nel caricamento dati: ${err.message}</p>`;
+    }
+};
+
+window.closeRegModal = () => {
+    document.getElementById('reg-details-modal').style.display = 'none';
+};
+
+// Chiudi se clicchi fuori
+window.addEventListener('click', (e) => {
+    const modal = document.getElementById('reg-details-modal');
+    if (e.target === modal) modal.style.display = 'none';
+});
