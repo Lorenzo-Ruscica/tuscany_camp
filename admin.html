@@ -3,9 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" sizes="32x32" href="loghi/logo_favicon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="loghi/logo_favicon.png">
+    <link rel="apple-touch-icon" href="loghi/logo_favicon.png">
     <title>Admin Dashboard | Tuscany Camp</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script type="text/javascript">
+   (function(){
+      // Incolla qui la tua PUBLIC KEY (quella corta, es. "user_...")
+      emailjs.init("HvNxuhIR0mdVRUIhR");
+   })();
+</script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <link rel="stylesheet" href="css/variables.css">
@@ -34,6 +44,9 @@
                 </button>
                 <button class="nav-btn" onclick="showTab('registrations')">
                     <i class="fas fa-users"></i> Iscritti Entry Form
+                </button>
+                <button class="nav-btn" onclick="showTab('users-system')">
+                    <i class="fas fa-id-card"></i> Gestione Account
                 </button>
                 <button class="nav-btn logout" onclick="logout()">
                     <i class="fas fa-sign-out-alt"></i> Esci
@@ -170,35 +183,83 @@
                     <tbody id="teachers-list-body"></tbody>
                 </table>
             </div>
+            <div id="tab-users-system" class="tab-content">
+    <h1>Gestione Account (Sistema)</h1>
+    <p>Qui vedi <strong>tutti</strong> gli utenti che hanno creato un account (Login), inclusi quelli che non hanno compilato il form.</p>
+
+    <div class="stats-row">
+        <div class="card">
+            <h3>Totale Account Creati</h3>
+            <h2 id="sys-total-count">0</h2>
+        </div>
+        <div class="card">
+            <h3>Form Mancanti (Fantasmi)</h3>
+            <h2 id="sys-ghost-count" style="color:orange">0</h2>
+        </div>
+    </div>
+
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Data Iscrizione</th>
+                <th>Email (Login)</th>
+                <th>Ultimo Accesso</th>
+                <th>Stato Form</th>
+                <th>Azioni</th>
+            </tr>
+        </thead>
+        <tbody id="system-users-body">
+            </tbody>
+    </table>
+</div>
 
         </main>
     </div>
 
+    <div class="admin-container">
+        </div>
+
     <div id="admin-edit-modal" class="modal-overlay" style="display:none;">
         <div class="modal-box">
-            <h2>Modifica Prenotazione</h2>
+            <h2 style="color:var(--color-hot-pink); margin-top:0;">Modifica Prenotazione</h2>
             <input type="hidden" id="edit-booking-id">
             
             <div class="form-group">
-                <label>Data</label>
+                <label>Data Lezione</label>
                 <input type="date" id="edit-date">
             </div>
-            <div class="form-group">
-                <label>Ora Inizio</label>
-                <input type="time" id="edit-start">
-            </div>
-             <div class="form-group">
-                <label>Ora Fine</label>
-                <input type="time" id="edit-end">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Inizio</label>
+                    <input type="time" id="edit-start">
+                </div>
+                <div class="form-group">
+                    <label>Fine</label>
+                    <input type="time" id="edit-end">
+                </div>
             </div>
             <div class="form-group">
                 <label>Prezzo (€)</label>
                 <input type="number" id="edit-price">
             </div>
             
-            <div class="modal-actions" style="margin-top:20px; text-align:right;">
-                <button onclick="closeEditModal()" style="background:#444; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer;">Annulla</button>
-                <button onclick="saveBookingChanges()" style="background:#f55394; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Salva</button>
+            <div class="modal-actions">
+                <button onclick="closeEditModal()" class="btn-cancel">Annulla</button>
+                <button onclick="saveBookingChanges()" class="btn-save">Salva Modifiche</button>
+            </div>
+        </div>
+    </div>
+    <div id="custom-modal-overlay" class="custom-modal-overlay" style="display: none;">
+        <div class="custom-modal-box">
+            <div class="modal-icon">
+                <i class="fas fa-info-circle" id="modal-icon-graphic"></i>
+            </div>
+            <h3 id="modal-title">Avviso</h3>
+            <p id="modal-message">Testo del messaggio...</p>
+            
+            <div class="modal-buttons">
+                <button id="modal-btn-cancel" class="btn-modal-cancel">Annulla</button>
+                <button id="modal-btn-confirm" class="btn-modal-confirm">OK</button>
             </div>
         </div>
     </div>

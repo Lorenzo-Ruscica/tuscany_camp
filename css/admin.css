@@ -222,3 +222,87 @@ input, select {
         width: 100%;
     }
 }
+/* --- MODALE EDIT ADMIN (FIXED) --- */
+.modal-overlay {
+    position: fixed; /* Fondamentale: si ancora alla finestra browser */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85); /* Sfondo molto scuro */
+    backdrop-filter: blur(5px);       /* Effetto sfocato dietro */
+    z-index: 10000;                   /* Altissimo per coprire tutto */
+    
+    /* Flexbox per centrare perfettamente */
+    display: flex; /* Nota: JS cambierà questo in 'none' o 'flex' */
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-box {
+    background: #1e1e1e;
+    padding: 30px;
+    border-radius: 15px;
+    border: 2px solid var(--color-hot-pink);
+    width: 90%;
+    max-width: 400px; /* Larghezza massima */
+    box-shadow: 0 0 40px rgba(0,0,0,0.8);
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-box label {
+    display: block;
+    margin-bottom: 5px;
+    color: #ccc;
+    font-size: 0.9rem;
+}
+
+.modal-box input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 5px;
+    color: white;
+}
+
+.modal-box .form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.btn-cancel {
+    background: #444;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.btn-save {
+    background: var(--color-hot-pink);
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-save:hover {
+    background: white;
+    color: var(--color-hot-pink);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
