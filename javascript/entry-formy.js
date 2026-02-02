@@ -1,28 +1,105 @@
 // ============================================================
 // FILE: js/entry_form.js
-// DESCRIZIONE: Entry Form + Stripe Checkout (Gestione Pending vs Paid)
+// DESCRIZIONE: Wizard 2 Steps + Logic
 // ============================================================
+
+// --- FUNZIONE GLOBALE PER LO STEP 1 ---
+// Questa funzione viene chiamata dai bottoni grandi nell'HTML
+window.selectRegistrationStep = function(type) {
+    const step1 = document.getElementById('step-1-selection');
+    const entryForm = document.getElementById('entryForm');
+    const hiddenTypeInput = document.getElementById('registrationType');
+
+    // 1. Salva il tipo
+    if (hiddenTypeInput) hiddenTypeInput.value = type;
+
+    // 2. Nascondi Step 1 e Mostra Step 2
+    if (step1) step1.style.display = 'none';
+    if (entryForm) entryForm.style.display = 'block'; // Appare il form
+
+    // 3. Triggera la logica di visibilità campi interna
+    // (Dobbiamo dispatchare un evento custom o chiamare una funzione esposta)
+    document.dispatchEvent(new CustomEvent('registrationTypeSelected', { detail: type }));
+};
+
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // --- 1. CONTROLLO RITORNO DA STRIPE (SUCCESS) ---
+    // --- 0. ASCOLTATORE EVENTO CUSTOM (Per collegare la funzione globale al modulo locale) ---
+    document.addEventListener('registrationTypeSelected', (e) => {
+        const type = e.detail;
+        updateFormVisibility(type);
+        calculateTotal();
+        
+        // Scroll leggero verso il form
+        document.getElementById('entryForm').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // --- 0.1 GESTIONE NOTTI EXTRA ---
+    const nightButtons = document.querySelectorAll('.btn-night');
+    const hiddenNightsInput = document.getElementById('extraNights');
+    const hiddenTypeInput = document.getElementById('registrationType');
+
+    if (nightButtons.length > 0) {
+        nightButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.disabled) return;
+                nightButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (hiddenNightsInput) hiddenNightsInput.value = btn.dataset.value;
+                calculateTotal();
+            });
+        });
+    }
+
+    // Funzione Helper: Mostra/Nascondi e gestisce 'required'
+    function updateFormVisibility(type) {
+        const manSection = document.getElementById('man-fields');
+        const womanSection = document.getElementById('woman-fields');
+        const manInputs = manSection.querySelectorAll('input');
+        const womanInputs = womanSection.querySelectorAll('input');
+
+        // Reset
+        manSection.classList.remove('hidden-section');
+        womanSection.classList.remove('hidden-section');
+
+        const setRequired = (inputs, isRequired) => {
+            inputs.forEach(input => {
+                if(isRequired) input.setAttribute('required', 'true');
+                else {
+                    input.removeAttribute('required');
+                    input.value = ''; 
+                }
+            });
+        };
+
+        if (type === 'couple') {
+            setRequired(manInputs, true);
+            setRequired(womanInputs, true);
+        } 
+        else if (type === 'man') {
+            womanSection.classList.add('hidden-section');
+            setRequired(manInputs, true);
+            setRequired(womanInputs, false); 
+        } 
+        else if (type === 'woman') {
+            manSection.classList.add('hidden-section');
+            setRequired(manInputs, false);
+            setRequired(womanInputs, true);
+        }
+    }
+
+    // --- 1. STRIPE RETURN ---
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('session_id')) {
-        // Pulisci l'URL
         window.history.replaceState({}, document.title, window.location.pathname);
-        
-        // Aggiorniamo subito lo stato a PAID nel DB (per sicurezza visiva immediata)
         const { data: { session } } = await window.supabase.auth.getSession();
-        if (session) {
-             await window.supabase
-            .from('registrations')
-            .update({ payment_status: 'paid' })
-            .eq('user_id', session.user.id);
-        }
-
-        setTimeout(() => {
-            showSuccess("Payment Successful!", "Your registration is confirmed. Welcome to Tuscany Camp!");
-        }, 500);
+        if (session) await window.supabase.from('registrations').update({ payment_status: 'paid' }).eq('user_id', session.user.id);
+        setTimeout(() => showSuccess("Payment Successful!", "Registration confirmed."), 500);
+        
+        // Se torna dal pagamento, mostra subito il form (salta step 1)
+        document.getElementById('step-1-selection').style.display = 'none';
+        document.getElementById('entryForm').style.display = 'block';
     }
 
     // --- RIFERIMENTI DOM ---
@@ -34,9 +111,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const successModal = document.getElementById('successModal');
     const closeSuccessBtn = document.getElementById('btn-close-success');
 
-    // Input & Riepilogo
     const radioPackages = document.querySelectorAll('input[name="package"]');
     const extraNightsInput = document.getElementById('extraNights');
+    
+    // Summary DOM
     const summaryPkgName = document.getElementById('summary-pkg-name');
     const summaryPkgPrice = document.getElementById('summary-pkg-price');
     const summaryNightCount = document.getElementById('summary-night-count');
@@ -45,15 +123,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modalTotal = document.getElementById('modalTotal');
     const modalPkgName = document.getElementById('modalPkgName');
 
-    // Stato
     let currentBasePrice = 160; 
     let currentPkgName = "Silver";
     const NIGHT_PRICE = 70;
     let currentGrandTotal = 0;
-    
-    // STATI LOGICI
-    let existingRecordId = null; // Se esiste un record (paid o pending)
-    let isPaid = false;          // Se è effettivamente pagato
+    let existingRecordId = null; 
+    let isPaid = false;          
 
     // --- CHECK UTENTE ---
     async function checkExistingRegistration() {
@@ -67,19 +142,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             .eq('user_id', currentUser.id)
             .maybeSingle();
 
-        if (reg) {
-            loadUserData(reg);
-        }
+        if (reg) loadUserData(reg);
     }
 
-    // --- CARICAMENTO DATI (PAID vs PENDING) ---
-    function loadUserData(data) {
+    // --- CARICAMENTO DATI (EDIT MODE) ---
+function loadUserData(data) {
+        // IMPORTANTE: Se l'utente ha già dati, SALTA lo Step 1 e mostra il form
+        const step1 = document.getElementById('step-1-selection');
+        const entryForm = document.getElementById('entryForm');
+        
+        if (step1) step1.style.display = 'none';
+        if (entryForm) entryForm.style.display = 'block';
+
         existingRecordId = data.id;
-        isPaid = (data.payment_status === 'paid'); // VERIFICA FONDAMENTALE
+        isPaid = (data.payment_status === 'paid'); 
 
-        console.log(`Utente trovato. ID: ${data.id}, Stato: ${data.payment_status}`);
-
-        // 1. Popola i campi (sempre, sia paid che pending)
+        // 1. Determina il TIPO DI ISCRIZIONE dai dati
+        let detectedType = 'couple';
+        if (!data.woman_name && data.man_name) detectedType = 'man';
+        else if (!data.man_name && data.woman_name) detectedType = 'woman';
+        
+        if(hiddenTypeInput) hiddenTypeInput.value = detectedType;
+        updateFormVisibility(detectedType);
+        
+        // 2. Popola i campi
         setVal('manName', data.man_name);
         setVal('manSurname', data.man_surname);
         setVal('femaleName', data.woman_name);
@@ -93,48 +179,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         setVal('departureDate', data.departure_date);
         setVal('departureTime', data.departure_time);
         
-        // Telefono
         const savedPhone = data.phone || "";
-        const prefixSelect = document.getElementById('phonePrefix');
         const phoneInput = document.getElementById('phone');
-        if (prefixSelect && phoneInput) {
-            let found = false;
-            for (let i = 0; i < prefixSelect.options.length; i++) {
-                const p = prefixSelect.options[i].value;
-                if (p && savedPhone.startsWith(p)) {
-                    prefixSelect.value = p;
-                    phoneInput.value = savedPhone.replace(p, '').trim(); found = true; break;
-                }
-            }
-            if (!found) { prefixSelect.value = ""; phoneInput.value = savedPhone; }
-        }
+        if(phoneInput) phoneInput.value = savedPhone;
 
-        // 2. Gestione Pacchetto e Notti
+        // 3. Pacchetto
         const savedPkg = data.package;
         const targetRadio = document.querySelector(`input[name="package"][value="${savedPkg}"]`);
         if (targetRadio) targetRadio.checked = true;
-        setVal('extraNights', data.extra_nights);
 
-        // --- BIVIO: PAGATO vs NON PAGATO ---
-        
+        // 4. Notti Extra
+        const savedNights = data.extra_nights || 0;
+        setVal('extraNights', savedNights);
+        const nightBtns = document.querySelectorAll('.btn-night');
+        nightBtns.forEach(btn => {
+            btn.classList.remove('active');
+            if (parseInt(btn.dataset.value) == savedNights) btn.classList.add('active');
+            
+            // Se pagato, disabilita modifica notti
+            if (isPaid) {
+                btn.disabled = true;
+                btn.style.opacity = "0.5";
+                btn.style.cursor = "not-allowed";
+            }
+        });
+
+        // 5. GESTIONE STATO PAGAMENTO
         if (isPaid) {
-            // SCENARIO A: TUTTO PAGATO (Blocca tutto, verde)
             applyPaidVisuals();
             
-            // Blocca input prezzi
-            radioPackages.forEach(r => { r.disabled = true; r.parentElement.style.opacity = "0.6"; r.parentElement.style.cursor = "not-allowed"; });
-            if(extraNightsInput) { extraNightsInput.disabled = true; extraNightsInput.style.opacity = "0.6"; extraNightsInput.style.cursor = "not-allowed"; }
-        } else {
-            // SCENARIO B: PENDING (Lascia modificare i prezzi per riprovare il pagamento)
-            // Non blocchiamo i radio buttons o le notti, perché magari vuole cambiare pacchetto prima di riprovare a pagare.
-            if(mainBtn) {
-                mainBtn.innerText = "COMPLETE PAYMENT"; // Invita a finire
-                mainBtn.classList.remove('btn-success'); // Assicuriamoci non sia verde
-            }
+            // NUOVO: Nascondi il riquadro "Change Registration Type" se ha già pagato
+            const changeBox = document.getElementById('change-type-box');
+            if(changeBox) changeBox.style.display = 'none';
+
+        } else if(mainBtn) {
+             mainBtn.innerText = "COMPLETE PAYMENT"; 
+             mainBtn.classList.remove('btn-success');
         }
 
         calculateTotal();
-    }   
+    }  
 
     function applyPaidVisuals() {
         const summaryCard = document.querySelector('.summary-card');
@@ -142,15 +226,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             summaryCard.classList.add('is-paid'); 
             const totalLabel = document.querySelector('.line.total span:first-child');
             if(totalLabel) totalLabel.innerText = "ALREADY PAID";
+            radioPackages.forEach(r => {
+                r.disabled = true;
+                r.parentElement.style.opacity = "0.5";
+            });
             
-            const summaryLines = document.querySelector('.summary-lines');
-            if(summaryLines && !document.querySelector('.paid-stamp')) {
-                const stamp = document.createElement('div');
-                stamp.className = 'paid-stamp';
-                stamp.innerHTML = '<i class="fas fa-check-circle"></i> PAYMENT COMPLETE';
-                summaryLines.insertBefore(stamp, summaryLines.firstChild);
-            }
-
             if (summaryCard.contains(mainBtn)) {
                 summaryCard.insertAdjacentElement('afterend', mainBtn);
                 mainBtn.classList.add('update-btn-style');
@@ -168,68 +248,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (el && val !== null && val !== undefined) el.value = val;
     }
 
-    // --- CALCOLI ---
     function calculateTotal() {
         const selectedRadio = document.querySelector('input[name="package"]:checked');
         if (selectedRadio) {
             currentBasePrice = parseInt(selectedRadio.dataset.price) || parseFloat(selectedRadio.value); 
             currentPkgName = selectedRadio.value || selectedRadio.getAttribute('data-name'); 
         }
+        
         const nights = parseInt(extraNightsInput.value) || 0;
         const nightsCost = nights * NIGHT_PRICE;
-        currentGrandTotal = currentBasePrice + nightsCost;
+        
+        let subTotal = currentBasePrice + nightsCost;
+        const currentType = hiddenTypeInput ? hiddenTypeInput.value : 'couple';
+        let multiplier = 1;
+        
+        if (currentType === 'couple') multiplier = 2;
 
-        if(summaryPkgName) summaryPkgName.innerText = currentPkgName.toUpperCase();
-        if(summaryPkgPrice) summaryPkgPrice.innerText = "€ " + currentBasePrice;
+        currentGrandTotal = subTotal * multiplier;
+
+        if(summaryPkgName) summaryPkgName.innerText = currentPkgName.toUpperCase() + (multiplier === 2 ? " (x2 Persons)" : "");
+        if(summaryPkgPrice) summaryPkgPrice.innerText = "€ " + (currentBasePrice * multiplier);
         if(summaryNightCount) summaryNightCount.innerText = nights;
-        if(summaryNightTotal) summaryNightTotal.innerText = "€ " + nightsCost;
+        if(summaryNightTotal) summaryNightTotal.innerText = "€ " + (nightsCost * multiplier);
         if(summaryTotal) summaryTotal.innerText = "€ " + currentGrandTotal;
         if(modalTotal) modalTotal.innerText = "€ " + currentGrandTotal;
-        if(modalPkgName) modalPkgName.innerText = currentPkgName.toUpperCase();
+        if(modalPkgName) modalPkgName.innerText = currentPkgName.toUpperCase() + (multiplier === 2 ? " (Couple)" : " (Single)");
     }
 
     radioPackages.forEach(radio => radio.addEventListener('change', calculateTotal));
-    if(extraNightsInput) extraNightsInput.addEventListener('input', calculateTotal);
+    
+    // Inizializza calcolo
     calculateTotal();
+    // Controlla se utente ha già dati (e se sì, nasconde step 1)
     checkExistingRegistration();
 
-    // --- GESTIONE BOTTONE PRINCIPALE ---
+    // --- SUBMIT ---
     if (entryForm) {
         entryForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!entryForm.checkValidity()) { entryForm.reportValidity(); return; }
-
-            // LOGICA INTELLIGENTE:
-            if (isPaid) {
-                // Caso 1: Già pagato -> Aggiorna solo info testuali
-                await updateOnlyInfo();
-            } else {
-                // Caso 2: Nuovo O Pending -> Apri modale pagamento
-                if(paymentModal) paymentModal.style.display = 'flex';
-            }
+            if (isPaid) await updateOnlyInfo();
+            else if(paymentModal) paymentModal.style.display = 'flex';
         });
-    }
-
-    // --- UPDATE SOLO INFO (Se già pagato) ---
-    async function updateOnlyInfo() {
-        const btn = mainBtn;
-        const originalText = btn.innerText;
-        btn.disabled = true;
-        btn.innerText = "Updating...";
-        try {
-            const updates = {
-                man_name: getValue('manName'), man_surname: getValue('manSurname'),
-                woman_name: getValue('femaleName'), woman_surname: getValue('femaleSurname'),
-                country: getValue('country'), teacher: getValue('teacherName'),
-                age_group: getValue('ageGroup'), phone: getValue('phone'),
-                arrival_date: getValue('arrivalDate'), arrival_time: getValue('arrivalTime'),
-                departure_date: getValue('departureDate'), departure_time: getValue('departureTime')
-            };
-            const { error } = await window.supabase.from('registrations').update(updates).eq('id', existingRecordId);
-            if (error) throw error;
-            showSuccess("Success!", "Your information has been updated successfully.");
-        } catch (err) { alert("Error: " + err.message); } 
-        finally { btn.disabled = false; btn.innerText = originalText; }
     }
 
     function getValue(id) {
@@ -242,27 +302,63 @@ document.addEventListener('DOMContentLoaded', async () => {
         return el ? el.value : null;
     }
 
-    // --- PROCEDURA PAGAMENTO E REDIRECT (Nuovo o Pending) ---
+    async function updateOnlyInfo() {
+        const btn = mainBtn;
+        const originalText = btn.innerText;
+        btn.disabled = true; btn.innerText = "Updating...";
+        try {
+            const type = hiddenTypeInput.value;
+            let manN = getValue('manName');
+            let manS = getValue('manSurname');
+            let womN = getValue('femaleName');
+            let womS = getValue('femaleSurname');
+
+            if (type === 'man') { womN = ''; womS = ''; }
+            if (type === 'woman') { manN = ''; manS = ''; }
+
+            const updates = {
+                man_name: manN, man_surname: manS,
+                woman_name: womN, woman_surname: womS,
+                country: getValue('country'), teacher: getValue('teacherName'),
+                age_group: getValue('ageGroup'), phone: getValue('phone'),
+                arrival_date: getValue('arrivalDate'), arrival_time: getValue('arrivalTime'),
+                departure_date: getValue('departureDate'), departure_time: getValue('departureTime')
+            };
+            const { error } = await window.supabase.from('registrations').update(updates).eq('id', existingRecordId);
+            if (error) throw error;
+            showSuccess("Success!", "Updated successfully.");
+        } catch (err) { alert("Error: " + err.message); } 
+        finally { btn.disabled = false; btn.innerText = originalText; }
+    }
+
     if (paymentForm) {
         paymentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const payBtn = paymentForm.querySelector('button');
             const originalText = payBtn.innerText;
-            payBtn.disabled = true;
-            payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing Checkout...';
+            payBtn.disabled = true; payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
 
             try {
-                // 1. Raccogli i dati
                 const { data: { session } } = await window.supabase.auth.getSession();
                 const userId = session ? session.user.id : null;
-                const fullNameString = `${getValue('manName')} ${getValue('manSurname')} & ${getValue('femaleName')} ${getValue('femaleSurname')}`;
                 
+                const type = hiddenTypeInput.value;
+                let manN = getValue('manName');
+                let manS = getValue('manSurname');
+                let womN = getValue('femaleName');
+                let womS = getValue('femaleSurname');
+                
+                let fullNameString = "";
+                if (type === 'couple') fullNameString = `${manN} ${manS} & ${womN} ${womS}`;
+                else if (type === 'man') { fullNameString = `${manN} ${manS}`; womN=''; womS=''; }
+                else if (type === 'woman') { fullNameString = `${womN} ${womS}`; manN=''; manS=''; }
+
                 const supabaseData = {
                     user_id: userId,
                     user_email: getValue('email'),
                     full_name: fullNameString, 
-                    man_name: getValue('manName'), man_surname: getValue('manSurname'),
-                    woman_name: getValue('femaleName'), woman_surname: getValue('femaleSurname'),
+                    man_name: manN, man_surname: manS,
+                    woman_name: womN, woman_surname: womS,
                     country: getValue('country'), teacher: getValue('teacherName'),
                     age_group: getValue('ageGroup'), phone: getValue('phone'),
                     package: currentPkgName,
@@ -270,44 +366,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                     arrival_date: getValue('arrivalDate'), arrival_time: getValue('arrivalTime'),
                     departure_date: getValue('departureDate'), departure_time: getValue('departureTime'),
                     total_amount: currentGrandTotal,
-                    payment_status: 'pending', // Rimane pending finché non torna da Stripe
+                    payment_status: 'pending',
                     created_at: new Date().toISOString()
                 };
 
-                // 2. Insert o Update?
-                if (existingRecordId) {
-                    // Se era "pending", AGGIORNIAMO il record esistente
-                    const { error } = await window.supabase.from('registrations').update(supabaseData).eq('id', existingRecordId);
-                    if (error) throw error;
-                } else {
-                    // Se è nuovo, INSERIAMO
-                    const { error } = await window.supabase.from('registrations').insert([supabaseData]);
-                    if (error) throw error;
-                }
+                if (existingRecordId) await window.supabase.from('registrations').update(supabaseData).eq('id', existingRecordId);
+                else await window.supabase.from('registrations').insert([supabaseData]);
 
                 await sendConfirmationEmail(supabaseData);
 
-                // 3. Chiamata Backend per URL
                 const currentUrl = window.location.href.split('?')[0]; 
                 const { data: responseData, error: funcError } = await window.supabase.functions.invoke('stripe-charge', {
                     body: {
                         amount: currentGrandTotal * 100, 
                         email: getValue('email'),
-                        description: `Tuscany Camp - ${currentPkgName}`,
+                        description: `Tuscany Camp - ${currentPkgName} (${type.toUpperCase()})`,
                         returnUrl: currentUrl
                     }
                 });
 
-                if (funcError) throw new Error("Server Error: " + funcError.message);
-                if (responseData.error) throw new Error("Stripe Error: " + responseData.error);
-                
+                if (funcError || responseData.error) throw new Error("Payment Init Failed: " + (funcError?.message || responseData?.error));
                 window.location.href = responseData.url;
 
             } catch (err) {
-                console.error("Error:", err);
-                alert('Errore: ' + err.message);
-                payBtn.disabled = false;
-                payBtn.innerText = originalText;
+                console.error(err);
+                alert('Error: ' + err.message);
+                payBtn.disabled = false; payBtn.innerText = originalText;
             }
         });
     }
@@ -341,7 +425,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         successModal.style.display = 'none';
         if (onSuccessClose) { onSuccessClose(); onSuccessClose = null; }
     });
-    window.addEventListener('click', (e) => {
-        if (e.target === paymentModal) paymentModal.style.display = 'none';
-    });
+    window.addEventListener('click', (e) => { if (e.target === paymentModal) paymentModal.style.display = 'none'; });
+    // --- GESTIONE TASTO "TORNA INDIETRO" (Change Type) ---
+    const backBtn = document.getElementById('btnBackToStep1');
+    
+    if (backBtn) {
+        backBtn.addEventListener('click', () => {
+            // Se l'utente ha già pagato, non permettere di tornare indietro
+            if (isPaid) return;
+
+            const step1 = document.getElementById('step-1-selection');
+            const formSection = document.getElementById('entryForm');
+
+            // 1. Nascondi il Form
+            if (formSection) formSection.style.display = 'none';
+            
+            // 2. Mostra la Selezione Iniziale
+            if (step1) {
+                step1.style.display = 'block';
+                // Animazione di entrata
+                step1.classList.remove('fade-in-up');
+                void step1.offsetWidth; // Trigger reflow
+                step1.classList.add('fade-in-up');
+            }
+
+            // 3. Scrolla in alto
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
 });

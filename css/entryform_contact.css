@@ -468,3 +468,169 @@
     box-shadow: 0 10px 20px rgba(0,0,0,0.2);
     z-index: 10;
 }
+/* --- SELETTORE NOTTI (EXTRA NIGHTS) --- */
+.nights-selector {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+    margin-bottom: 20px;
+}
+
+.btn-night {
+    flex: 1; /* Si dividono lo spazio in 3 parti uguali */
+    padding: 12px;
+    border: 1px solid #444;
+    background: #1e1e1e;
+    color: #aaa;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.btn-night:hover {
+    background: #333;
+    color: white;
+}
+
+/* Stile per il bottone selezionato */
+.btn-night.active {
+    background-color: var(--color-hot-pink);
+    border-color: var(--color-hot-pink);
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(245, 83, 148, 0.3);
+}
+
+/* Stile disabilitato (per quando è pagato) */
+.btn-night:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+/* Classe per nascondere sezioni (Uomo o Donna) */
+.hidden-section {
+    display: none !important;
+}
+
+/* Stile per il selettore Tipo Iscrizione (Simile a nights-selector) */
+.type-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+.btn-type {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid #444;
+    background: #1e1e1e;
+    color: #aaa;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    text-align: center;
+    font-weight: 500;
+}
+
+.btn-type:hover {
+    background: #333;
+    color: white;
+}
+
+.btn-type.active {
+    background-color: #0984e3; /* Un blu diverso dal rosa per distinguerlo */
+    border-color: #0984e3;
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(9, 132, 227, 0.3);
+}
+
+.btn-type:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+/* --- STEP 1: SELEZIONE INIZIALE --- */
+#step-1-selection {
+    text-align: center;
+    padding: 40px 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.big-btn-container {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 30px;
+    flex-wrap: wrap;
+}
+
+.big-type-btn {
+    flex: 1;
+    min-width: 200px;
+    padding: 30px 20px;
+    background: #1e1e1e;
+    border: 2px solid #333;
+    border-radius: 15px;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.big-type-btn i {
+    font-size: 2rem;
+    color: var(--color-hot-pink);
+    margin-bottom: 10px;
+}
+
+.big-type-btn:hover {
+    background: #333;
+    border-color: var(--color-hot-pink);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+}
+
+/* Nascondiamo il form all'inizio */
+#entryForm {
+    display: none; /* Magia: appare solo dopo la scelta */
+    animation: fadeInUp 0.6s ease;
+}
+/* --- RIQUADRO CAMBIO TIPO (SOTTO AL RIEPILOGO) --- */
+.change-type-card {
+    background: #1e1e1e; /* Stesso sfondo delle altre card */
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px; /* Spazio tra il riepilogo e questo box */
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.btn-change-type {
+    background: transparent;
+    border: 1px solid #555;
+    color: #ccc;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.btn-change-type:hover {
+    background: #333;
+    border-color: var(--color-hot-pink);
+    color: white;
+}
+
+.btn-change-type i {
+    margin-right: 8px;
+}

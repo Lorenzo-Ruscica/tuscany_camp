@@ -619,15 +619,44 @@ window.viewRegistrationDetails = async (id) => {
 
         if (error) throw error;
 
-        // 3. Genera l'HTML con i dati specifici
+        // 3. DETERMINA IL TIPO (Logica)
+        let typeBadge = '';
+        let hasMan = r.man_name && r.man_name.trim() !== '';
+        let hasWoman = r.woman_name && r.woman_name.trim() !== '';
+
+        if (hasMan && hasWoman) {
+            typeBadge = `<div style="background:#6c5ce7; color:white; padding:8px 15px; border-radius:20px; display:inline-block; font-weight:bold; margin-bottom:15px;">
+                            <i class="fas fa-user-friends"></i> COUPLE (x2)
+                         </div>`;
+        } else if (hasMan && !hasWoman) {
+            typeBadge = `<div style="background:#0984e3; color:white; padding:8px 15px; border-radius:20px; display:inline-block; font-weight:bold; margin-bottom:15px;">
+                            <i class="fas fa-male"></i> SINGLE MALE
+                         </div>`;
+        } else if (!hasMan && hasWoman) {
+            typeBadge = `<div style="background:#e84393; color:white; padding:8px 15px; border-radius:20px; display:inline-block; font-weight:bold; margin-bottom:15px;">
+                            <i class="fas fa-female"></i> SINGLE FEMALE
+                         </div>`;
+        } else {
+            typeBadge = `<div style="background:#555; color:white; padding:8px 15px; border-radius:20px; display:inline-block; font-weight:bold; margin-bottom:15px;">
+                            <i class="fas fa-question"></i> UNKNOWN
+                         </div>`;
+        }
+
+        // 4. Genera l'HTML
         content.innerHTML = `
+            <div style="text-align:center;">
+                ${typeBadge}
+            </div>
+
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 0.9rem;">
                 
-                <div style="grid-column: 1 / -1; margin-bottom: 10px;">
-                    <strong style="color:white; display:block; border-bottom:1px solid #444; padding-bottom:5px;">1. COPPIA</strong>
+                <div style="grid-column: 1 / -1; margin-bottom: 5px;">
+                    <strong style="color:white; display:block; border-bottom:1px solid #444; padding-bottom:5px;">1. PARTECIPANTI</strong>
                 </div>
-                <div><span style="color:#888;">Man:</span> <br> <strong>${r.man_name || '-'} ${r.man_surname || '-'}</strong></div>
-                <div><span style="color:#888;">Woman:</span> <br> <strong>${r.woman_name || '-'} ${r.woman_surname || '-'}</strong></div>
+                
+                <div style="${hasMan ? '' : 'opacity:0.3'}"><span style="color:#888;">Man:</span> <br> <strong>${r.man_name || '-'} ${r.man_surname || '-'}</strong></div>
+                <div style="${hasWoman ? '' : 'opacity:0.3'}"><span style="color:#888;">Woman:</span> <br> <strong>${r.woman_name || '-'} ${r.woman_surname || '-'}</strong></div>
+                
                 <div><span style="color:#888;">Teacher:</span> <br> ${r.teacher || '-'}</div>
                 <div><span style="color:#888;">Country:</span> <br> ${r.country || '-'}</div>
                 <div><span style="color:#888;">Age Group:</span> <br> ${r.age_group || '-'}</div>
@@ -644,10 +673,10 @@ window.viewRegistrationDetails = async (id) => {
                 <div><span style="color:#888;">Package:</span> <br> <span style="color:var(--color-hot-pink); font-weight:bold;">${r.package}</span></div>
                 <div><span style="color:#888;">Extra Nights:</span> <br> ${r.extra_nights || '0'}</div>
                 <div><span style="color:#888;">Total Paid:</span> <br> € ${r.total_amount}</div>
-                <div><span style="color:#888;">Method:</span> <br> ${r.payment_method || '-'}</div>
+                <div><span style="color:#888;">Method:</span> <br> ${r.payment_status === 'paid' ? 'Stripe (Card)' : 'Pending'}</div>
 
                 <div style="grid-column: 1 / -1; margin: 10px 0;">
-                    <strong style="color:white; display:block; border-bottom:1px solid #444; padding-bottom:5px;">4. LOGISTICA (ARRIVI/PARTENZE)</strong>
+                    <strong style="color:white; display:block; border-bottom:1px solid #444; padding-bottom:5px;">4. LOGISTICA</strong>
                 </div>
                 <div><span style="color:#888;">Arrival:</span> <br> ${r.arrival_date || 'N/A'} <small>(${r.arrival_time || '--:--'})</small></div>
                 <div><span style="color:#888;">Departure:</span> <br> ${r.departure_date || 'N/A'} <small>(${r.departure_time || '--:--'})</small></div>
