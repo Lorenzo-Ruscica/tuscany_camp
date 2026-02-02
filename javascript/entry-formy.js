@@ -1,16 +1,66 @@
 // ============================================================
 // FILE: js/entry_form.js
-// DESCRIZIONE: Gestione Entry Form (Create & Edit Mode), Calcoli, Supabase
+// DESCRIZIONE: Gestione Entry Form, Integrazione Stripe Elements, Prefissi Telefoni
 // ============================================================
+
+// 1. INIZIALIZZAZIONE STRIPE (Chiave Pubblica)
+const stripe = Stripe('pk_test_51SwLbDAZHekT7i4Kt6n5yXtOS3TBl07kt02a3LaE2x3nqwR3AjpN2mD7H6twZ8ZcrPZvIHDwSVCxB1usn33wcFIv008mW8mUpT');
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // --- 1. RIFERIMENTI DOM ---
+    // --- 2. SETUP STRIPE ELEMENTS (Visualizzazione Carta) ---
+    // Questo crea il campo di input sicuro per la carta
+    const elements = stripe.elements();
+    
+    const style = {
+        base: {
+            color: "#ffffff",
+            fontFamily: '"Outfit", sans-serif',
+            fontSmoothing: "antialiased",
+            fontSize: "16px",
+            "::placeholder": {
+                color: "#aab7c4"
+            }
+        },
+        invalid: {
+            color: "#ff4d4d",
+            iconColor: "#ff4d4d"
+        }
+    };
+
+    // Crea l'elemento carta
+    const card = elements.create("card", { style: style });
+    
+    // Montalo nel DIV #card-element presente nel tuo nuovo HTML
+    // Nota: Se il modale è nascosto, Stripe si carica comunque ma potrebbe non essere a fuoco.
+    const cardElementDiv = document.getElementById('card-element');
+    if (cardElementDiv) {
+        card.mount("#card-element");
+        
+        // Gestione errori in tempo reale (validazione numero, scadenza, etc.)
+        card.on('change', ({error}) => {
+            const displayError = document.getElementById('card-errors');
+            if (displayError) {
+                if (error) {
+                    displayError.textContent = error.message;
+                } else {
+                    displayError.textContent = '';
+                }
+            }
+        });
+    }
+
+
+    // --- 3. RIFERIMENTI DOM ---
     const entryForm = document.getElementById('entryForm');
     const paymentModal = document.getElementById('paymentModal');
     const paymentForm = document.getElementById('paymentForm');
     const closeModalBtn = document.querySelector('.close-modal');
     const mainBtn = document.getElementById('btnProceed');
+
+    // Riferimenti Modale Successo
+    const successModal = document.getElementById('successModal');
+    const closeSuccessBtn = document.getElementById('btn-close-success');
 
     // Input per i calcoli
     const radioPackages = document.querySelectorAll('input[name="package"]');
@@ -23,6 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const summaryNightTotal = document.getElementById('summary-night-total');
     const summaryTotal = document.getElementById('summary-total');
     const modalTotal = document.getElementById('modalTotal');
+    const modalPkgName = document.getElementById('modalPkgName');
 
     // Variabili di Stato
     let currentBasePrice = 160; 
@@ -35,12 +86,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let existingRecordId = null;
     let currentUser = null;
     
-    // Callback modale successo
     let onSuccessClose = null;
-    const successModal = document.getElementById('successModal');
-    const closeSuccessBtn = document.getElementById('btn-close-success');
 
-    // --- 2. CHECK INIZIALE: L'UTENTE HA GIÀ COMPILATO? ---
+    // --- 4. CHECK INIZIALE: L'UTENTE HA GIÀ COMPILATO? ---
     async function checkExistingRegistration() {
         const { data: { session } } = await window.supabase.auth.getSession();
         if (!session) return; 
@@ -58,41 +106,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- 3. ATTIVA MODALITÀ MODIFICA (POPOLA, BLOCCA E SPOSTA BOTTONE) ---
- // --- 3. ATTIVA MODALITÀ MODIFICA (POPOLA, BLOCCA E SPOSTA BOTTONE) ---
+    // --- 5. ATTIVA MODALITÀ MODIFICA ---
     function enableEditMode(data) {
         console.log("Edit Mode Active. Data:", data);
         isEditMode = true;
         existingRecordId = data.id;
 
-        // A. MODIFICHE VISIVE AL RIEPILOGO (Verde + Timbro)
+        // A. UI AGGIORNAMENTI (Verde + Timbro)
         const summaryCard = document.querySelector('.summary-card');
         const totalLabel = document.querySelector('.line.total span:first-child');
         const summaryLines = document.querySelector('.summary-lines');
 
         if(summaryCard && !summaryCard.classList.contains('is-paid')) {
-            summaryCard.classList.add('is-paid'); // Bordo verde
-            
-            // 1. Cambia label Totale
+            summaryCard.classList.add('is-paid'); 
             if(totalLabel) totalLabel.innerText = "ALREADY PAID";
 
-            // 2. Aggiungi Timbro
             const stamp = document.createElement('div');
             stamp.className = 'paid-stamp';
             stamp.innerHTML = '<i class="fas fa-check-circle"></i> PAYMENT COMPLETE';
-            if(summaryLines) summaryLines.insertBefore(stamp, summaryLines.firstChild);
+            if(summaryLines && !document.querySelector('.paid-stamp')) {
+                 summaryLines.insertBefore(stamp, summaryLines.firstChild);
+            }
 
-            // 3. SPOSTA IL BOTTONE FUORI (Subito sotto la card)
             if (summaryCard.contains(mainBtn)) {
-                // Lo inserisce immediatamente DOPO la fine del div .summary-card
                 summaryCard.insertAdjacentElement('afterend', mainBtn);
-                
-                // Applica stili specifici al bottone "volante"
                 mainBtn.classList.add('update-btn-style');
                 mainBtn.innerText = "UPDATE INFORMATION";
-                
-                // Stili inline per sicurezza
-                mainBtn.style.backgroundColor = "#2ecc71"; // Verde
+                mainBtn.style.backgroundColor = "#2ecc71";
                 mainBtn.style.borderColor = "#2ecc71";
                 mainBtn.style.color = "#fff";
                 mainBtn.style.fontWeight = "bold";
@@ -107,13 +147,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         setVal('country', data.country);
         setVal('teacherName', data.teacher);
         setVal('ageGroup', data.age_group);
-        setVal('phone', data.phone);
         setVal('email', data.user_email);
         
         setVal('arrivalDate', data.arrival_date);
         setVal('arrivalTime', data.arrival_time);
         setVal('departureDate', data.departure_date);
         setVal('departureTime', data.departure_time);
+        
         // --- LOGICA INTELLIGENTE PER IL TELEFONO (Prefisso + Numero) ---
         const savedPhone = data.phone || "";
         const prefixSelect = document.getElementById('phonePrefix');
@@ -167,7 +207,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (el && val !== null && val !== undefined) el.value = val;
     }
 
-    // --- 4. FUNZIONE CALCOLO TOTALE ---
+    // --- 6. FUNZIONE CALCOLO TOTALE ---
     function calculateTotal() {
         const selectedRadio = document.querySelector('input[name="package"]:checked');
         if (selectedRadio) {
@@ -186,6 +226,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(summaryNightTotal) summaryNightTotal.innerText = "€ " + nightsCost;
         if(summaryTotal) summaryTotal.innerText = "€ " + currentGrandTotal;
         if(modalTotal) modalTotal.innerText = "€ " + currentGrandTotal;
+        if(modalPkgName) modalPkgName.innerText = currentPkgName.toUpperCase();
     }
 
     radioPackages.forEach(radio => radio.addEventListener('change', calculateTotal));
@@ -195,7 +236,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkExistingRegistration();
 
 
-    // --- 5. GESTIONE SUBMIT FORM ---
+    // --- 7. GESTIONE SUBMIT FORM ---
     if (entryForm) {
         entryForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -213,7 +254,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- 6. FUNZIONE AGGIORNA DATI (EDIT) ---
+    // --- 8. AGGIORNAMENTO DATI (EDIT MODE) ---
     async function updateExistingData() {
         const btn = mainBtn;
         const originalText = btn.innerText;
@@ -229,7 +270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 country: getValue('country'),
                 teacher: getValue('teacherName'),
                 age_group: getValue('ageGroup'),
-                phone: getValue('phone'),
+                phone: getValue('phone'), // Usa la logica getValue col prefisso
                 arrival_date: getValue('arrivalDate'),
                 arrival_time: getValue('arrivalTime'),
                 departure_date: getValue('departureDate'),
@@ -242,7 +283,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .eq('id', existingRecordId);
 
             if (error) throw error;
-
             showSuccess("Success!", "Your information has been updated successfully.");
             
         } catch (err) {
@@ -254,10 +294,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-// Helper per leggere valori (MODIFICATO PER IL TELEFONO)
+    // Helper per leggere valori (Con logica Prefisso Telefono)
     function getValue(id) {
-        // 1. CASO SPECIALE: TELEFONO
-        // Se stiamo chiedendo il telefono, uniamo Prefisso + Numero
+        // CASO SPECIALE: TELEFONO
         if (id === 'phone') {
             const prefix = document.getElementById('phonePrefix').value;
             const number = document.getElementById('phone').value;
@@ -265,13 +304,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             return prefix ? `${prefix} ${number}` : number;
         }
 
-        // 2. CASO NORMALE
+        // CASO NORMALE
         const el = document.getElementById(id) || document.querySelector(`[name="${id}"]`);
         return el ? el.value : null;
     }
 
 
-    // --- 7. FUNZIONE PAGAMENTO E NUOVA ISCRIZIONE ---
+    // --- 9. PAGAMENTO E CREAZIONE REGISTRAZIONE (CREATE MODE) ---
     if (paymentForm) {
         paymentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -282,9 +321,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
 
             try {
+                // A. Sessione Supabase
                 const { data: { session } } = await window.supabase.auth.getSession();
                 const userId = session ? session.user.id : null;
                 
+                // B. Preparazione Dati
                 const manName = getValue('manName');
                 const manSurname = getValue('manSurname');
                 const womanName = getValue('femaleName');
@@ -302,7 +343,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     country: getValue('country'),
                     teacher: getValue('teacherName'),
                     age_group: getValue('ageGroup'),
-                    phone: getValue('phone'),
+                    phone: getValue('phone'), // Prende prefisso + numero
                     package: currentPkgName,
                     extra_nights: parseInt(document.getElementById('extraNights').value) || 0,
                     arrival_date: getValue('arrivalDate'),
@@ -310,18 +351,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                     departure_date: getValue('departureDate'),
                     departure_time: getValue('departureTime'),
                     total_amount: currentGrandTotal,
-                    payment_status: 'paid',
-                    payment_method: 'stripe_mock',
+                    
+                    payment_status: 'paid', // Simulazione (diventerà 'pending' con backend reale)
+                    payment_method: 'stripe_mock', 
                     created_at: new Date().toISOString()
                 };
 
+                // C. Simulazione Attesa (Backend mock)
+                // Qui in futuro useremo: const { token } = await stripe.createToken(card);
                 await new Promise(r => setTimeout(r, 1500));
 
-                const { error } = await window.supabase.from('registrations').insert([supabaseData]);
+                // D. Salva su Supabase
+                const { data: newReg, error } = await window.supabase
+                    .from('registrations')
+                    .insert([supabaseData])
+                    .select()
+                    .single();
+
                 if (error) throw error;
 
+                // E. Invio Email
                 await sendConfirmationEmail(supabaseData);
 
+                // F. Chiusura e Successo
                 paymentModal.style.display = 'none';
                 
                 showSuccess("Payment Successful!", "Registration Completed. Check your email.", () => {
@@ -330,18 +382,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             } catch (err) {
                 console.error("Error:", err);
-                alert('Error: ' + err.message);
+                alert('Errore: ' + err.message);
                 payBtn.disabled = false;
                 payBtn.innerText = originalText;
             }
         });
     }
 
-    // --- 8. EMAIL HELPER ---
+    // --- 10. EMAIL HELPER ---
     async function sendConfirmationEmail(data) {
         const SERVICE_ID = "service_fik9j1g"; 
         const TEMPLATE_ID = "template_2je1tdk"; 
-
         const templateParams = {
             to_email: data.user_email,
             man_name: data.man_name,
@@ -360,79 +411,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             departure_date: data.departure_date || "N/A",
             departure_time: data.departure_time || "--:--"
         };
-
         try {
-            if (typeof emailjs !== 'undefined') {
-                await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
-            }
+            if (typeof emailjs !== 'undefined') await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
         } catch (e) { console.error("Email Error", e); }
     }
 
-    // --- 9. HELPER MODALE SUCCESSO ---
+    // --- 11. HELPER MODALE SUCCESSO ---
     function showSuccess(title, msg, callback = null) {
         if (!successModal) { alert(msg); if(callback) callback(); return; }
-        
         const h3 = successModal.querySelector('h3');
         const p = successModal.querySelector('p');
         if(h3) h3.innerText = title;
         if(p) p.innerText = msg;
-
         onSuccessClose = callback;
         successModal.style.display = 'flex';
     }
 
-    // --- 10. CHIUSURA MODALI ---
-    if (closeModalBtn) {
-        closeModalBtn.addEventListener('click', () => { paymentModal.style.display = 'none'; });
-    }
-    
-    if (closeSuccessBtn) {
-        closeSuccessBtn.addEventListener('click', () => { 
-            successModal.style.display = 'none';
-            if (onSuccessClose) {
-                onSuccessClose();
-                onSuccessClose = null;
-            }
-        });
-    }
-
+    // --- 12. CHIUSURA MODALI ---
+    if (closeModalBtn) closeModalBtn.addEventListener('click', () => { paymentModal.style.display = 'none'; });
+    if (closeSuccessBtn) closeSuccessBtn.addEventListener('click', () => { 
+        successModal.style.display = 'none';
+        if (onSuccessClose) { onSuccessClose(); onSuccessClose = null; }
+    });
     window.addEventListener('click', (e) => {
         if (e.target === paymentModal) paymentModal.style.display = 'none';
-        // Success modal si chiude solo col bottone per sicurezza
-    });
-        // 1. Inizializzazione (Con la tua chiave PUBBLICA che prenderai dalla dashboard Stripe)
-    const stripe = Stripe('pk_test_51SwLbDAZHekT7i4Kt6n5yXtOS3TBl07kt02a3LaE2x3nqwR3AjpN2mD7H6twZ8ZcrPZvIHDwSVCxB1usn33wcFIv008mW8mUpT');
-    const elements = stripe.elements();
-
-    // 2. Creazione dello stile (per farlo matchare col tuo sito scuro)
-    const style = {
-        base: {
-            color: "#ffffff",
-            fontFamily: '"Outfit", sans-serif',
-            fontSmoothing: "antialiased",
-            fontSize: "16px",
-            "::placeholder": {
-                color: "#aab7c4"
-            }
-        },
-        invalid: {
-            color: "#ff4d4d",
-            iconColor: "#ff4d4d"
-        }
-    };
-
-    // 3. Montaggio dell'elemento nella pagina
-    const card = elements.create("card", { style: style });
-    card.mount("#card-element");
-
-    // 4. Gestione errori in tempo reale
-    card.on('change', ({error}) => {
-        const displayError = document.getElementById('card-errors');
-        if (error) {
-            displayError.textContent = error.message;
-        } else {
-            displayError.textContent = '';
-        }
     });
 
 });
