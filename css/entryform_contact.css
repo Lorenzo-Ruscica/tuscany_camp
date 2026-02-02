@@ -413,3 +413,58 @@
     color: #fff;
     cursor: pointer;
 }
+/* --- STILI PER MODALITÀ 'GIÀ PAGATO' (EDIT MODE) --- */
+.summary-card.is-paid {
+    border: 2px solid #2ecc71; /* Bordo Verde */
+}
+
+.summary-card.is-paid h3 {
+    color: #2ecc71 !important; /* Titolo Verde */
+}
+
+.summary-card.is-paid .line.total {
+    color: #2ecc71; /* Totale Verde */
+    border-top: 1px solid #2ecc71;
+}
+
+.paid-stamp {
+    text-align: center;
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 800;
+    text-transform: uppercase;
+    border: 1px dashed #2ecc71;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+/* Rende la colonna destra "sticky" nel suo insieme */
+/* Modifica SOLO il valore 'top' qui */
+.form-column-right {
+    position: sticky;
+    top: 110px; /* <--- ERA 20px. Aumentalo a 110px o 120px */
+    display: flex;
+    flex-direction: column;
+    gap: 15px; 
+    height: fit-content;
+    z-index: 5; /* Assicuriamoci che non vada sopra il menu a tendina se ne hai uno */
+}
+
+/* Rimuovi sticky dalla card interna (se c'era) per evitare conflitti */
+.summary-card {
+    position: relative !important;
+    top: auto !important;
+    /* Il resto del tuo stile rimane uguale */
+}
+
+/* Stile specifico per il bottone quando è fuori (Update Info) */
+#btnProceed.update-btn-style {
+    margin-top: 0 !important; /* Gestito dal gap del genitore */
+    width: 100%;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    z-index: 10;
+}

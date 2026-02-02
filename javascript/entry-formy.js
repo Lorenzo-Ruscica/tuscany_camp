@@ -11,10 +11,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const paymentForm = document.getElementById('paymentForm');
     const closeModalBtn = document.querySelector('.close-modal');
     const mainBtn = document.getElementById('btnProceed');
-    
-    // Riferimenti Modale Successo
-    const successModal = document.getElementById('successModal');
-    const closeSuccessBtn = document.getElementById('btn-close-success');
 
     // Input per i calcoli
     const radioPackages = document.querySelectorAll('input[name="package"]');
@@ -39,8 +35,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let existingRecordId = null;
     let currentUser = null;
     
-    // Callback da eseguire alla chiusura del modale successo
+    // Callback modale successo
     let onSuccessClose = null;
+    const successModal = document.getElementById('successModal');
+    const closeSuccessBtn = document.getElementById('btn-close-success');
 
     // --- 2. CHECK INIZIALE: L'UTENTE HA GIÀ COMPILATO? ---
     async function checkExistingRegistration() {
@@ -60,21 +58,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- 3. ATTIVA MODALITÀ MODIFICA (POPOLA E BLOCCA CAMPI) ---
+    // --- 3. ATTIVA MODALITÀ MODIFICA (POPOLA, BLOCCA E SPOSTA BOTTONE) ---
+ // --- 3. ATTIVA MODALITÀ MODIFICA (POPOLA, BLOCCA E SPOSTA BOTTONE) ---
     function enableEditMode(data) {
         console.log("Edit Mode Active. Data:", data);
         isEditMode = true;
         existingRecordId = data.id;
 
-        // A. Cambia UI del Bottone
-        if(mainBtn) {
-            mainBtn.innerText = "UPDATE INFORMATION";
-            mainBtn.classList.remove('btn-primary');
-            mainBtn.style.backgroundColor = "#2ecc71"; 
-            mainBtn.style.borderColor = "#2ecc71";
+        // A. MODIFICHE VISIVE AL RIEPILOGO (Verde + Timbro)
+        const summaryCard = document.querySelector('.summary-card');
+        const totalLabel = document.querySelector('.line.total span:first-child');
+        const summaryLines = document.querySelector('.summary-lines');
+
+        if(summaryCard && !summaryCard.classList.contains('is-paid')) {
+            summaryCard.classList.add('is-paid'); // Bordo verde
+            
+            // 1. Cambia label Totale
+            if(totalLabel) totalLabel.innerText = "ALREADY PAID";
+
+            // 2. Aggiungi Timbro
+            const stamp = document.createElement('div');
+            stamp.className = 'paid-stamp';
+            stamp.innerHTML = '<i class="fas fa-check-circle"></i> PAYMENT COMPLETE';
+            if(summaryLines) summaryLines.insertBefore(stamp, summaryLines.firstChild);
+
+            // 3. SPOSTA IL BOTTONE FUORI (Subito sotto la card)
+            if (summaryCard.contains(mainBtn)) {
+                // Lo inserisce immediatamente DOPO la fine del div .summary-card
+                summaryCard.insertAdjacentElement('afterend', mainBtn);
+                
+                // Applica stili specifici al bottone "volante"
+                mainBtn.classList.add('update-btn-style');
+                mainBtn.innerText = "UPDATE INFORMATION";
+                
+                // Stili inline per sicurezza
+                mainBtn.style.backgroundColor = "#2ecc71"; // Verde
+                mainBtn.style.borderColor = "#2ecc71";
+                mainBtn.style.color = "#fff";
+                mainBtn.style.fontWeight = "bold";
+            }
         }
 
-        // B. Popola i campi
+        // B. POPOLA I CAMPI
         setVal('manName', data.man_name);
         setVal('manSurname', data.man_surname);
         setVal('femaleName', data.woman_name);
@@ -89,8 +114,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         setVal('arrivalTime', data.arrival_time);
         setVal('departureDate', data.departure_date);
         setVal('departureTime', data.departure_time);
+        // --- LOGICA INTELLIGENTE PER IL TELEFONO (Prefisso + Numero) ---
+        const savedPhone = data.phone || "";
+        const prefixSelect = document.getElementById('phonePrefix');
+        const phoneInput = document.getElementById('phone');
 
-        // C. GESTIONE CAMPI BLOCCATI (PREZZO)
+        if (prefixSelect && phoneInput) {
+            let found = false;
+            // 1. Controlla se il numero salvato inizia con uno dei prefissi della lista
+            for (let i = 0; i < prefixSelect.options.length; i++) {
+                const p = prefixSelect.options[i].value;
+                // Se il prefisso non è vuoto e il numero inizia con quel prefisso
+                if (p && savedPhone.startsWith(p)) {
+                    prefixSelect.value = p; // Seleziona il prefisso nel menu
+                    // Pulisce il numero togliendo il prefisso e gli spazi
+                    phoneInput.value = savedPhone.replace(p, '').trim(); 
+                    found = true;
+                    break;
+                }
+            }
+            // 2. Se non abbiamo trovato un prefisso noto (o era "Other")
+            if (!found) {
+                prefixSelect.value = ""; // Seleziona "Other"
+                phoneInput.value = savedPhone; // Mette tutto il numero nella casella
+            }
+        }
+
+        // C. BLOCCA CAMPI PREZZO
         const savedPkg = data.package;
         const targetRadio = document.querySelector(`input[name="package"][value="${savedPkg}"]`);
         if (targetRadio) targetRadio.checked = true;
@@ -101,7 +151,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             r.parentElement.style.cursor = "not-allowed";
         });
 
-        // Extra Nights Bloccate
         setVal('extraNights', data.extra_nights);
         if(extraNightsInput) {
             extraNightsInput.disabled = true;
@@ -111,7 +160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         calculateTotal();
-    }
+    }   
 
     function setVal(id, val) {
         const el = document.getElementById(id) || document.querySelector(`[name="${id}"]`);
@@ -123,6 +172,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const selectedRadio = document.querySelector('input[name="package"]:checked');
         if (selectedRadio) {
             currentBasePrice = parseInt(selectedRadio.dataset.price) || parseFloat(selectedRadio.value); 
+            // CORRETTO: Usa value se data-name non c'è
             currentPkgName = selectedRadio.value || selectedRadio.getAttribute('data-name'); 
         }
 
@@ -145,7 +195,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkExistingRegistration();
 
 
-    // --- 5. GESTIONE SUBMIT DEL FORM PRINCIPALE ---
+    // --- 5. GESTIONE SUBMIT FORM ---
     if (entryForm) {
         entryForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -163,7 +213,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- 6. FUNZIONE: AGGIORNA DATI ESISTENTI (EDIT MODE) ---
+    // --- 6. FUNZIONE AGGIORNA DATI (EDIT) ---
     async function updateExistingData() {
         const btn = mainBtn;
         const originalText = btn.innerText;
@@ -180,7 +230,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 teacher: getValue('teacherName'),
                 age_group: getValue('ageGroup'),
                 phone: getValue('phone'),
-                
                 arrival_date: getValue('arrivalDate'),
                 arrival_time: getValue('arrivalTime'),
                 departure_date: getValue('departureDate'),
@@ -194,7 +243,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (error) throw error;
 
-            // MOSTRA MODALE SUCCESSO (Senza ricaricare)
             showSuccess("Success!", "Your information has been updated successfully.");
             
         } catch (err) {
@@ -206,13 +254,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+// Helper per leggere valori (MODIFICATO PER IL TELEFONO)
     function getValue(id) {
+        // 1. CASO SPECIALE: TELEFONO
+        // Se stiamo chiedendo il telefono, uniamo Prefisso + Numero
+        if (id === 'phone') {
+            const prefix = document.getElementById('phonePrefix').value;
+            const number = document.getElementById('phone').value;
+            // Se c'è un prefisso, lo uniamo. Se l'utente ha scelto "Other" (vuoto), salviamo solo il numero.
+            return prefix ? `${prefix} ${number}` : number;
+        }
+
+        // 2. CASO NORMALE
         const el = document.getElementById(id) || document.querySelector(`[name="${id}"]`);
         return el ? el.value : null;
     }
 
 
-    // --- 7. FUNZIONE: NUOVO PAGAMENTO E ISCRIZIONE (CREATE MODE) ---
+    // --- 7. FUNZIONE PAGAMENTO E NUOVA ISCRIZIONE ---
     if (paymentForm) {
         paymentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -263,10 +322,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 await sendConfirmationEmail(supabaseData);
 
-                // Chiudi modale pagamento e mostra modale successo
                 paymentModal.style.display = 'none';
                 
-                // MOSTRA SUCCESSO E POI RICARICA
                 showSuccess("Payment Successful!", "Registration Completed. Check your email.", () => {
                     window.location.reload(); 
                 });
@@ -311,33 +368,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) { console.error("Email Error", e); }
     }
 
-    // --- 9. HELPER MODALE SUCCESSO DINAMICO ---
+    // --- 9. HELPER MODALE SUCCESSO ---
     function showSuccess(title, msg, callback = null) {
         if (!successModal) { alert(msg); if(callback) callback(); return; }
         
-        // Imposta testi dinamici
         const h3 = successModal.querySelector('h3');
         const p = successModal.querySelector('p');
         if(h3) h3.innerText = title;
         if(p) p.innerText = msg;
 
-        // Salva callback
         onSuccessClose = callback;
         successModal.style.display = 'flex';
     }
 
     // --- 10. CHIUSURA MODALI ---
-    
-    // Payment Modal
     if (closeModalBtn) {
         closeModalBtn.addEventListener('click', () => { paymentModal.style.display = 'none'; });
     }
     
-    // Success Modal (Bottone OK)
     if (closeSuccessBtn) {
         closeSuccessBtn.addEventListener('click', () => { 
             successModal.style.display = 'none';
-            // Se c'è una callback (es. reload pagina), eseguila ora
             if (onSuccessClose) {
                 onSuccessClose();
                 onSuccessClose = null;
@@ -345,10 +396,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Click fuori
     window.addEventListener('click', (e) => {
         if (e.target === paymentModal) paymentModal.style.display = 'none';
-        // Non chiudiamo successModal cliccando fuori per forzare l'OK (utile per il reload)
+        // Success modal si chiude solo col bottone per sicurezza
+    });
+        // 1. Inizializzazione (Con la tua chiave PUBBLICA che prenderai dalla dashboard Stripe)
+    const stripe = Stripe('pk_test_51SwLbDAZHekT7i4Kt6n5yXtOS3TBl07kt02a3LaE2x3nqwR3AjpN2mD7H6twZ8ZcrPZvIHDwSVCxB1usn33wcFIv008mW8mUpT');
+    const elements = stripe.elements();
+
+    // 2. Creazione dello stile (per farlo matchare col tuo sito scuro)
+    const style = {
+        base: {
+            color: "#ffffff",
+            fontFamily: '"Outfit", sans-serif',
+            fontSmoothing: "antialiased",
+            fontSize: "16px",
+            "::placeholder": {
+                color: "#aab7c4"
+            }
+        },
+        invalid: {
+            color: "#ff4d4d",
+            iconColor: "#ff4d4d"
+        }
+    };
+
+    // 3. Montaggio dell'elemento nella pagina
+    const card = elements.create("card", { style: style });
+    card.mount("#card-element");
+
+    // 4. Gestione errori in tempo reale
+    card.on('change', ({error}) => {
+        const displayError = document.getElementById('card-errors');
+        if (error) {
+            displayError.textContent = error.message;
+        } else {
+            displayError.textContent = '';
+        }
     });
 
 });
