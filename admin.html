@@ -293,10 +293,64 @@
         </div>
     </div>
 
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="javascript/config.js"></script>
     <script src="javascript/admin.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Riferimenti agli elementi
+            const mobileBtn = document.getElementById('mobile-toggle-btn');
+            const closeBtn = document.getElementById('close-sidebar-btn');
+            const sidebar = document.getElementById('adminSidebar');
+            const body = document.body;
+
+            console.log("Script Mobile Caricato. Bottone trovato?", mobileBtn); // Debug in console
+
+            // 1. APERTURA MENU
+            if (mobileBtn) {
+                mobileBtn.addEventListener('click', function(e) {
+                    e.preventDefault(); // Evita comportamenti strani
+                    console.log("Bottone cliccato!"); 
+                    sidebar.classList.add('sidebar-open'); // Aggiunge la classe CSS
+                    body.classList.add('menu-active');     // Aggiunge sfondo scuro
+                });
+            }
+
+            // 2. CHIUSURA (Tasto X)
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function() {
+                    sidebar.classList.remove('sidebar-open');
+                    body.classList.remove('menu-active');
+                });
+            }
+
+            // 3. CHIUSURA (Click Fuori / Overlay)
+            document.addEventListener('click', function(e) {
+                // Se il menu è aperto E il click NON è sulla sidebar E NON è sul bottone
+                if (body.classList.contains('menu-active') && 
+                    !sidebar.contains(e.target) && 
+                    !mobileBtn.contains(e.target)) {
+                    
+                    sidebar.classList.remove('sidebar-open');
+                    body.classList.remove('menu-active');
+                }
+            });
+
+            // 4. CHIUSURA (Click su un link del menu)
+            const navLinks = document.querySelectorAll('.nav-btn');
+            navLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    // Chiudi solo se siamo su mobile (schermo piccolo)
+                    if (window.innerWidth < 768) {
+                        sidebar.classList.remove('sidebar-open');
+                        body.classList.remove('menu-active');
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </body>
 </html>
