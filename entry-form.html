@@ -6,7 +6,9 @@
     <link rel="icon" type="image/png" sizes="32x32" href="loghi/logo_favicon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="loghi/logo_favicon.png">
     <link rel="apple-touch-icon" href="loghi/logo_favicon.png">
+    
     <script src="https://js.stripe.com/v3/"></script>
+    
     <title>Entry Form | Tuscany Camp 2026</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -223,23 +225,28 @@
                             <div class="log-group">
                                 <h4>Arrival</h4>
                                 <div class="input-row">
-<div class="form-group">
-    <label>Date</label>
-    <input type="date" id="arrivalDate" name="arrivalDate">
-</div>
-<div class="form-group">
-    <label>Time</label>
-    <input type="time" id="arrivalTime" name="arrivalTime">
-</div>
-
-<div class="form-group">
-    <label>Date</label>
-    <input type="date" id="departureDate" name="departureDate">
-</div>
-<div class="form-group">
-    <label>Time</label>
-    <input type="time" id="departureTime" name="departureTime">
-</div>
+                                    <div class="form-group">
+                                        <label>Date</label>
+                                        <input type="date" id="arrivalDate" name="arrivalDate">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Time</label>
+                                        <input type="time" id="arrivalTime" name="arrivalTime">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="log-group">
+                                <h4>Departure</h4>
+                                <div class="input-row">
+                                    <div class="form-group">
+                                        <label>Date</label>
+                                        <input type="date" id="departureDate" name="departureDate">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Time</label>
+                                        <input type="time" id="departureTime" name="departureTime">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -278,33 +285,45 @@
         </div>
     </section>
 
-    <div id="paymentModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal">&times;</span>
-            <h3>Secure Checkout</h3>
-            <p>Total Amount: <strong id="modalTotal" style="color:var(--color-hot-pink)">€ 160</strong></p>
-            
-            <form id="paymentForm" class="payment-form">
-                <div class="form-group">
-                    <label>Cardholder Name</label>
-                    <input type="text" placeholder="Mario Rossi" required>
-                </div>
-                <div class="form-group">
-                    <label>Card Number</label>
-                    <input type="text" placeholder="0000 0000 0000 0000" required>
-                </div>
-                <div class="input-row">
-                    <div class="form-group">
-                        <label>Expiry</label>
-                        <input type="text" placeholder="MM/YY" required style="width: 100px;">
-                    </div>
-                    <div class="form-group">
-                        <label>CVV</label>
-                        <input type="text" placeholder="123" required style="width: 80px;">
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block" style="margin-top: 20px;">PAY NOW</button>
-            </form>
+<div id="paymentModal" class="modal">
+    <div class="modal-content" style="text-align: center;">
+        <span class="close-modal">&times;</span>
+        
+        <div style="margin-bottom: 20px; color: var(--color-hot-pink);">
+            <i class="fas fa-shopping-cart" style="font-size: 3rem;"></i>
+        </div>
+
+        <h3>Proceed to Checkout</h3>
+        
+        <p style="color: #ccc; margin: 15px 0;">
+            You are creating a registration for the <strong id="modalPkgName" style="color:white">Package</strong>.
+        </p>
+
+        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <p style="margin:0; font-size: 0.9rem; color: #aaa;">Total to Pay</p>
+            <strong id="modalTotal" style="font-size: 2rem; color: var(--color-hot-pink);">€ 0</strong>
+        </div>
+
+        <p style="font-size: 0.85rem; color: #888; margin-bottom: 25px;">
+            You will be redirected to the secure <strong>Stripe Payment Page</strong> to complete your purchase.
+        </p>
+        
+        <form id="paymentForm">
+            <button type="submit" class="btn btn-primary btn-block">
+                GO TO PAYMENT <i class="fas fa-arrow-right" style="margin-left:8px;"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+    <div id="successModal" class="modal" style="display: none;">
+        <div class="modal-content" style="text-align: center; max-width: 400px;">
+            <div style="margin-bottom: 20px;">
+                <i class="fas fa-check-circle" style="font-size: 4rem; color: #2ecc71;"></i>
+            </div>
+            <h3 style="color: white; margin-bottom: 10px;">Success!</h3>
+            <p style="color: #ccc; margin-bottom: 25px;">Your information has been updated successfully.</p>
+            <button id="btn-close-success" class="btn btn-primary" style="padding: 10px 30px; background-color: #2ecc71; border-color: #2ecc71;">OK</button>
         </div>
     </div>
 
@@ -325,22 +344,15 @@
             <div class="copyright">&copy; 2026 Tuscany Camp. Design inspired by the passion for dance.</div>
         </div>
     </footer>
-    <div id="successModal" class="modal" style="display: none;">
-    <div class="modal-content" style="text-align: center; max-width: 400px;">
-        <div style="margin-bottom: 20px;">
-            <i class="fas fa-check-circle" style="font-size: 4rem; color: #2ecc71;"></i>
-        </div>
-        <h3 style="color: white; margin-bottom: 10px;">Success!</h3>
-        <p style="color: #ccc; margin-bottom: 25px;">Your information has been updated successfully.</p>
-        <button id="btn-close-success" class="btn btn-primary" style="padding: 10px 30px; background-color: #2ecc71; border-color: #2ecc71;">OK</button>
-    </div>
-</div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script src="javascript/config.js"></script> 
     <script src="javascript/main.js"></script>
-    <script src="javascript/entry-formy.js"></script> <div id="custom-modal" class="modal" style="display:none;">
+    
+    <script src="javascript/entry-formy.js"></script> 
+
+    <div id="custom-modal" class="modal" style="display:none;">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
             <h3 id="modal-title" style="color:var(--color-hot-pink); margin-bottom:15px;">Avviso</h3>
             <p id="modal-message" style="margin-bottom:25px; color:rgba(255,255,255,0.8);">Messaggio...</p>

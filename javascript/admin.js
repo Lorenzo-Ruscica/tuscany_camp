@@ -668,4 +668,51 @@ window.closeRegModal = () => {
 window.addEventListener('click', (e) => {
     const modal = document.getElementById('reg-details-modal');
     if (e.target === modal) modal.style.display = 'none';
+    // ==========================================
+// FUNZIONI MOBILE MENU
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const mobileBtn = document.getElementById('mobile-toggle-btn');
+    const closeBtn = document.getElementById('close-sidebar-btn');
+    const sidebar = document.getElementById('adminSidebar');
+    const body = document.body;
+
+    // Funzione Apri
+    if (mobileBtn) {
+        mobileBtn.addEventListener('click', () => {
+            sidebar.classList.add('sidebar-open');
+            body.classList.add('menu-active');
+        });
+    }
+
+    // Funzione Chiudi (Click su X)
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            sidebar.classList.remove('sidebar-open');
+            body.classList.remove('menu-active');
+        });
+    }
+
+    // Funzione Chiudi (Click fuori / overlay)
+    document.addEventListener('click', (e) => {
+        if (body.classList.contains('menu-active') && 
+            !sidebar.contains(e.target) && 
+            e.target !== mobileBtn) {
+            
+            sidebar.classList.remove('sidebar-open');
+            body.classList.remove('menu-active');
+        }
+    });
+
+    // Chiudi menu quando clicchi un link
+    const navLinks = document.querySelectorAll('.nav-btn');
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 768) {
+                sidebar.classList.remove('sidebar-open');
+                body.classList.remove('menu-active');
+            }
+        });
+    });
+});
 });
