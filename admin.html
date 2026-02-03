@@ -59,10 +59,26 @@
                 <button class="nav-btn logout" onclick="logout()">
                     <i class="fas fa-sign-out-alt"></i> Esci
                 </button>
+                <button class="nav-btn" onclick="showSection('timer', this)">
+                    <i class="fas fa-clock"></i> Timer Home
+                </button>
             </nav>
         </aside>
 
         <main class="content">
+            <div id="section-timer" class="admin-section" style="display: none;">
+        <h2>Gestione Timer Home Page</h2>
+        
+        <div class="admin-card" style="background: #1e1e1e; border: 1px solid var(--color-hot-pink); border-radius: 8px; padding: 20px; max-width: 500px;">
+            <div style="margin-bottom: 20px;">
+                <label style="color:#aaa; display:block; margin-bottom:10px;">Data Scadenza Countdown</label>
+                <input type="datetime-local" id="timer-date-input" style="width: 100%; padding: 12px; background: #333; border: 1px solid #555; color: white; border-radius: 5px;">
+            </div>
+            <button onclick="saveTimerSettings()" class="btn btn-primary">
+                <i class="fas fa-save"></i> SALVA DATA
+            </button>
+        </div>
+    </div>
             
             <div id="tab-availability" class="tab-content active">
                 <h1>Gestione Disponibilità Insegnanti</h1>
@@ -90,7 +106,7 @@
                 <h3>Turni Attivi</h3>
                 <div id="avail-list" class="list-container"></div>
             </div>
-
+ 
             <div id="tab-schedule" class="tab-content">
                 <h1>Piano Giornaliero</h1>
                 <div class="no-print control-bar">

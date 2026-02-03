@@ -744,4 +744,71 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+// ==========================================
+// GESTIONE NAVIGAZIONE SCHEDE (Tabs)
+// ==========================================
+
+window.showSection = function(sectionId, menuBtn) {
+    // 1. Nascondi TUTTE le sezioni
+    const sections = document.querySelectorAll('.admin-section');
+    sections.forEach(sec => sec.style.display = 'none');
+
+    // 2. Mostra solo quella richiesta
+    const target = document.getElementById('section-' + sectionId);
+    if (target) target.style.display = 'block';
+
+    // 3. Aggiorna la classe 'active' nel menu (per evidenziare il tasto)
+    const menuItems = document.querySelectorAll('.menu-item');
+    menuItems.forEach(item => item.classList.remove('active'));
+    if (menuBtn) menuBtn.classList.add('active');
+};
+
+// ... (Lascia qui sotto il codice del Timer saveTimerSettings e loadTimerDate che ti ho dato prima)
 });
+// --- GESTIONE TIMER ---
+
+// 1. Carica la data attuale all'avvio
+document.addEventListener('DOMContentLoaded', async () => {
+    // ... (altre funzioni di init se ci sono) ...
+    loadCurrentTimer();
+});
+
+async function loadCurrentTimer() {
+    const { data, error } = await window.supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'countdown_end')
+        .single();
+
+    if (data && document.getElementById('timer-date-input')) {
+        // Formatta la data per l'input datetime-local
+        document.getElementById('timer-date-input').value = data.value;
+    }
+}
+
+// 2. Funzione per salvare la nuova data (chiamata dal bottone HTML)
+window.saveTimerDate = async () => {
+    const newVal = document.getElementById('timer-date-input').value;
+    
+    if (!newVal) return alert("Please select a date.");
+
+    const btn = document.querySelector('button[onclick="saveTimerDate()"]');
+    const oldText = btn.innerText;
+    btn.innerText = "Saving...";
+    btn.disabled = true;
+
+    try {
+        const { error } = await window.supabase
+            .from('site_settings')
+            .update({ value: newVal })
+            .eq('key', 'countdown_end');
+
+        if (error) throw error;
+        alert("Timer updated successfully! Check the Home Page.");
+    } catch (e) {
+        alert("Error: " + e.message);
+    } finally {
+        btn.innerText = oldText;
+        btn.disabled = false;
+    }
+};
