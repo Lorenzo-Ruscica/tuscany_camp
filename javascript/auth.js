@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // C. Invia Richiesta a Supabase (FIX URL UNIVERSALE)
+    // C. Invia Richiesta a Supabase
     if (btnConfirmReset) {
         btnConfirmReset.addEventListener('click', async (e) => {
             e.preventDefault();
@@ -179,26 +179,32 @@ document.addEventListener('DOMContentLoaded', () => {
             btnConfirmReset.disabled = true;
 
             try {
-                // CALCOLO URL ROBUSTO:
-                // Prende la cartella attuale (es. /tuscany_camp/) e aggiunge update-password.html
-                // Funziona sia se sei su login.html che su index.html
+                // 1. CALCOLO URL DINAMICO
+                // Recupera il percorso base (es. /tuscany_camp/)
                 const path = window.location.pathname;
                 const directory = path.substring(0, path.lastIndexOf('/')); 
-                const redirectUrl = window.location.origin + directory + '/update-password.html';
+                
+                // NOTA BENE: Assicurati che il file HTML creato prima si chiami ESATTAMENTE 'update_password.html'
+                const redirectUrl = window.location.origin + directory + '/update_password.html';
 
+                console.log("Redirect URL generato:", redirectUrl); // Utile per debug
+
+                // 2. CHIAMATA SUPABASE
                 const { error } = await window.supabase.auth.resetPasswordForEmail(email, {
                     redirectTo: redirectUrl
                 });
 
                 if (error) throw error;
 
-                // Successo
+                // 3. SUCCESSO
                 if(resetModal) resetModal.style.display = 'none';
                 
+                const msg = "Check your inbox for the password reset link.\nClicking it will let you set a new password.";
+                
                 if(window.showCustomAlert) {
-                    await window.showCustomAlert("Email Sent", "Check your inbox for the password reset link.");
+                    await window.showCustomAlert("Email Sent", msg);
                 } else {
-                    alert("Check your inbox for the password reset link.");
+                    alert(msg);
                 }
 
             } catch (err) {
