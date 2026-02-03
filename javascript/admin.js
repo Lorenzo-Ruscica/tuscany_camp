@@ -512,23 +512,39 @@ window.loadTeachersList = async () => {
     tbody.innerHTML = '';
     if(t) {
         t.forEach(teacher => {
-            tbody.innerHTML += `<tr><td><strong>${teacher.full_name}</strong></td><td>€ ${teacher.base_price}</td><td>${teacher.discipline || '-'}</td><td><span style="color:#0f0">Attivo</span></td><td><button onclick="deleteTeacher(${teacher.id})" style="color:red; background:none; border:none; cursor:pointer;">Elimina</button></td></tr>`;
+            // Aggiungo visualizzazione Email
+            const emailDisplay = teacher.email ? `<br><small style="color:#aaa">${teacher.email}</small>` : '';
+            
+            tbody.innerHTML += `
+            <tr>
+                <td><strong>${teacher.full_name}</strong>${emailDisplay}</td>
+                <td>€ ${teacher.base_price}</td>
+                <td>${teacher.discipline || '-'}</td>
+                <td><span style="color:#0f0">Attivo</span></td>
+                <td><button onclick="deleteTeacher(${teacher.id})" style="color:red; background:none; border:none; cursor:pointer;">Elimina</button></td>
+            </tr>`;
         });
     }
 };
 window.addNewTeacher = async () => {
     const name = document.getElementById('new-teacher-name').value;
+    const email = document.getElementById('new-teacher-email').value; // NUOVO
     const price = document.getElementById('new-teacher-price').value;
     const disc = document.getElementById('new-teacher-discipline').value;
+    
     if (!name) return alert("Nome obbligatorio");
-    await window.supabase.from('teachers').insert({ full_name: name, base_price: price, discipline: disc, is_active: true });
-    alert("Fatto"); loadTeachersList(); loadTeachers();
-};
-window.deleteTeacher = async (id) => {
-    if(!confirm("Eliminare?")) return;
-    const { error } = await window.supabase.from('teachers').delete().eq('id', id);
-    if(error) alert("Errore: " + error.message);
-    else { loadTeachersList(); loadTeachers(); }
+
+    await window.supabase.from('teachers').insert({ 
+        full_name: name, 
+        email: email.trim(), // Salva l'email
+        base_price: price, 
+        discipline: disc, 
+        is_active: true 
+    });
+    
+    alert("Insegnante aggiunto!"); 
+    loadTeachersList(); 
+    loadTeachers();
 };
 
 // ==========================================

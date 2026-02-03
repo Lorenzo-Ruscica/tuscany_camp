@@ -97,8 +97,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ==========================================
-    // 4. LOGIN (Sign In)
+// ==========================================
+    // 4. LOGIN (Sign In) - CON REINDIRIZZAMENTO INTELLIGENTE
     // ==========================================
     if (formLogin) {
         formLogin.addEventListener('submit', async (e) => {
@@ -108,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const password = document.getElementById('loginPassword').value;
             const btn = formLogin.querySelector('button');
 
+            // UI: Disabilita bottone
             btn.disabled = true;
             btn.innerText = "Logging in...";
             if(authMessage) authMessage.style.display = 'none';
@@ -115,25 +116,73 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 if (!window.supabase) throw new Error("Supabase non connesso.");
                 
-                const { error } = await window.supabase.auth.signInWithPassword({
+                // 1. ESEGUI IL LOGIN
+                const { data, error } = await window.supabase.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
 
                 if (error) throw error;
 
-                window.location.href = "index.html"; 
+                // ---------------------------------------------------------
+                // 2. LOGICA DI REINDIRIZZAMENTO (CHI SI È LOGGATO?)
+                // ---------------------------------------------------------
+                const userEmail = data.user.email;
+
+                // A. CHECK AMMINISTRATORI
+                // Aggiungi qui le email che devono accedere al pannello admin
+                const admins = [
+                    'admin@tuscanycamp.com', 
+                    'mirko@gozzoli.com', 
+                    'lorenzo.ruscica@outlook.it'
+                ];
+
+                if (admins.includes(userEmail)) {
+                    window.location.href = 'admin.html';
+                    return; // Stop qui
+                }
+
+                // B. CHECK INSEGNANTI (Database)
+                // Controlla se questa email esiste nella tabella 'teachers'
+                const { data: teacherDoc } = await window.supabase
+                    .from('teachers')
+                    .select('id')
+                    .eq('email', userEmail)
+                    .maybeSingle();
+
+                if (teacherDoc) {
+                    window.location.href = 'teacher-dashboard.html';
+                    return; // Stop qui
+                }
+
+                // C. UTENTE NORMALE
+                // Se c'era un redirect salvato (es. arrivava dall'entry form) usalo, altrimenti Home
+                const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+                if (redirectUrl) {
+                    sessionStorage.removeItem('redirectAfterLogin');
+                    window.location.href = redirectUrl;
+                } else {
+                    window.location.href = "index.html"; 
+                }
+                // ---------------------------------------------------------
 
             } catch (err) {
-                authMessage.className = "auth-message error";
-                authMessage.innerText = "Email o Password errati.";
-                authMessage.style.display = 'block';
+                // Gestione Errori
+                console.error("Login Error:", err);
+                if(authMessage) {
+                    authMessage.className = "auth-message error";
+                    authMessage.innerText = "Email o Password errati."; // O err.message per dettagli
+                    authMessage.style.display = 'block';
+                } else {
+                    alert("Login Failed: " + err.message);
+                }
+                
+                // Reset Bottone
                 btn.disabled = false;
                 btn.innerText = "LOG IN";
             }
         });
     }
-
     // ==========================================
     // 5. LOGICA PASSWORD DIMENTICATA (Reset)
     // ==========================================

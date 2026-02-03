@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Area | Tuscany Camp</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/admin.css"> <style>
+        body { background: #000; padding: 20px; }
+        .schedule-card {
+            background: #1e1e1e; border: 1px solid #333; border-radius: 8px; 
+            padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .time-box { font-size: 1.2rem; font-weight: bold; color: var(--color-hot-pink); }
+        .couple-name { color: white; font-size: 1rem; margin-top: 5px; }
+        .date-header { color: #aaa; margin: 20px 0 10px; border-bottom: 1px solid #333; padding-bottom: 5px; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
+        .logout-btn { background: none; border: 1px solid #555; color: #ccc; padding: 5px 15px; border-radius: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div style="max-width: 600px; margin: 0 auto;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <div>
+                <h4 style="margin:0; color:#aaa;">WELCOME</h4>
+                <h1 id="teacher-name" style="margin:0; color:white;">Loading...</h1>
+            </div>
+            <button class="logout-btn" onclick="logoutTeacher()">Logout</button>
+        </div>
+
+        <button onclick="loadMySchedule()" class="btn btn-primary" style="width:100%; margin-bottom:20px;">
+            <i class="fas fa-sync-alt"></i> REFRESH SCHEDULE
+        </button>
+
+        <div id="schedule-container">
+            <p style="text-align:center; color:#666;">Checking your schedule...</p>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="javascript/config.js"></script>
+    
+    <script src="javascript/teacher_dashboard.js"></script>
+</body>
+</html>
