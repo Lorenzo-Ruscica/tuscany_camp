@@ -47,16 +47,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ============================================================
 
 // --- GESTIONE TAB ---
+// --- GESTIONE TAB CLASSICHE (Dashboard) ---
 window.showTab = (tabId) => {
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    const tab = document.getElementById('tab-' + tabId);
-    if(tab) tab.classList.add('active');
+    // A. Gestione Sezioni Principali
+    const dashboardSection = document.getElementById('section-dashboard');
+    const timerSection = document.getElementById('section-timer');
     
-    document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-    if (event && event.currentTarget && event.currentTarget.classList.contains('nav-btn')) {
+    // Mostra Dashboard, Nascondi Timer
+    if (dashboardSection) dashboardSection.style.display = 'block';
+    if (timerSection) timerSection.style.display = 'none';
+
+    // B. Gestione Bottoni Menu Laterale
+    // Rimuove 'active' da TUTTI i bottoni
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+    
+    // Aggiunge 'active' al bottone cliccato
+    // (Usa event.currentTarget perché l'onclick è inline nell'HTML)
+    if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
     }
 
+    // C. Gestione Contenuto Tab
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    const tab = document.getElementById('tab-' + tabId);
+    if(tab) tab.classList.add('active');
+
+    // D. Caricamento Dati Specifici
     if (tabId === 'accounting') loadAllBookings();
     if (tabId === 'messages') loadMessages();
     if (tabId === 'registrations') loadRegistrations();
@@ -201,10 +217,13 @@ window.loadAllBookings = async () => {
         .order('created_at', { ascending: false })
         .limit(50);
     renderAccountingTable(bookings);
+    updateTeacherHours(bookings);
+    updateUserTotals(bookings);
 };
 
 window.searchBookings = async () => {
     loadAllBookings(); 
+    
 };
 
 function renderAccountingTable(bookings) {
@@ -748,19 +767,26 @@ document.addEventListener('DOMContentLoaded', () => {
 // GESTIONE NAVIGAZIONE SCHEDE (Tabs)
 // ==========================================
 
-window.showSection = function(sectionId, menuBtn) {
-    // 1. Nascondi TUTTE le sezioni
-    const sections = document.querySelectorAll('.admin-section');
-    sections.forEach(sec => sec.style.display = 'none');
+window.showSection = (sectionId, btnClicked) => {
+    // A. Gestione Sezioni Principali
+    const dashboardSection = document.getElementById('section-dashboard');
+    const timerSection = document.getElementById('section-timer');
 
-    // 2. Mostra solo quella richiesta
-    const target = document.getElementById('section-' + sectionId);
-    if (target) target.style.display = 'block';
+    if (sectionId === 'timer') {
+        // Nascondi Dashboard, Mostra Timer
+        if (dashboardSection) dashboardSection.style.display = 'none';
+        if (timerSection) timerSection.style.display = 'block';
+    } 
+    // (Se in futuro aggiungi altre sezioni, metti qui gli else if)
 
-    // 3. Aggiorna la classe 'active' nel menu (per evidenziare il tasto)
-    const menuItems = document.querySelectorAll('.menu-item');
-    menuItems.forEach(item => item.classList.remove('active'));
-    if (menuBtn) menuBtn.classList.add('active');
+    // B. Gestione Bottoni Menu Laterale
+    // Rimuove 'active' da TUTTI i bottoni (compresi quelli delle tab dashboard)
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+
+    // Aggiunge 'active' SOLO al bottone del Timer
+    if (btnClicked) {
+        btnClicked.classList.add('active');
+    }
 };
 
 // ... (Lascia qui sotto il codice del Timer saveTimerSettings e loadTimerDate che ti ho dato prima)
@@ -812,3 +838,139 @@ window.saveTimerDate = async () => {
         btn.disabled = false;
     }
 };
+// ==========================================
+// CALCOLO ORE INSEGNANTI (CONTABILITÀ)
+// ==========================================
+
+function updateTeacherHours(bookings) {
+    const container = document.getElementById('teachers-work-summary');
+    if (!container) return;
+
+    container.innerHTML = ''; // Pulisce il contenitore
+
+    const teacherStats = {};
+
+    bookings.forEach(booking => {
+        // 1. Filtri di sicurezza (ignoriamo le cancellate se vuoi)
+        // Se vuoi contare solo le confermate, togli il commento sotto:
+        // if (booking.status === 'cancelled') return;
+
+        // Se esiste l'oggetto teachers usa il nome, altrimenti ignora
+const teacher = booking.teachers ? booking.teachers.full_name : null;
+        if (!teacher || !booking.start_time || !booking.end_time) return;
+
+        // 2. Calcola durata in minuti
+        const startMinutes = timeToMinutes(booking.start_time);
+        const endMinutes = timeToMinutes(booking.end_time);
+        let duration = endMinutes - startMinutes;
+
+        if (duration < 0) duration = 0; // Evita errori se orari sono sbagliati
+
+        // 3. Somma al totale dell'insegnante
+        if (!teacherStats[teacher]) {
+            teacherStats[teacher] = 0;
+        }
+        teacherStats[teacher] += duration;
+    });
+
+    // 4. Se non ci sono dati
+    if (Object.keys(teacherStats).length === 0) {
+        container.innerHTML = '<span style="color:#aaa">Nessuna lezione attiva trovata.</span>';
+        return;
+    }
+
+    // 5. Crea le "Card" per ogni insegnante
+    for (const [name, totalMinutes] of Object.entries(teacherStats)) {
+        // Converti minuti in Ore:Minuti
+        const h = Math.floor(totalMinutes / 60);
+        const m = totalMinutes % 60;
+        const timeString = `${h}h ${m > 0 ? m + 'm' : ''}`;
+
+        // Crea elemento HTML
+        const badge = document.createElement('div');
+        badge.style.cssText = `
+            background: #333; 
+            padding: 10px 15px; 
+            border-radius: 6px; 
+            border: 1px solid #444; 
+            min-width: 140px;
+            text-align: center;
+        `;
+        
+        badge.innerHTML = `
+            <div style="font-size: 0.8rem; color: #aaa; text-transform: uppercase; margin-bottom: 5px;">${name}</div>
+            <div style="font-size: 1.3rem; font-weight: bold; color: var(--color-hot-pink);">${timeString}</div>
+        `;
+        
+        container.appendChild(badge);
+    }
+}
+
+// Funzione Helper: converte "10:30" o "10:30:00" in minuti totali (es. 630)
+function timeToMinutes(timeStr) {
+    if (!timeStr) return 0;
+    const parts = timeStr.split(':');
+    const h = parseInt(parts[0]) || 0;
+    const m = parseInt(parts[1]) || 0;
+    return (h * 60) + m;
+}
+// ==========================================
+// CALCOLO TOTALI PAGAMENTI UTENTI
+// ==========================================
+
+function updateUserTotals(bookings) {
+    const container = document.getElementById('users-payment-summary');
+    if (!container) return;
+
+    container.innerHTML = ''; // Pulisce
+
+    const userStats = {};
+
+    bookings.forEach(b => {
+        // 1. Ignora le cancellate
+        if (b.status === 'cancelled') return;
+
+        // 2. Trova il nome (Gestisce sia Booking da Form che Manuali)
+        let name = "Sconosciuto";
+        if (b.registrations && b.registrations.full_name) {
+            name = b.registrations.full_name;
+        } else if (b.user_id) {
+            name = "ID: " + b.user_id.slice(0, 5);
+        }
+
+        // 3. Somma il prezzo
+        const price = parseFloat(b.lesson_price) || 0;
+
+        if (!userStats[name]) {
+            userStats[name] = 0;
+        }
+        userStats[name] += price;
+    });
+
+    // 4. Se vuoto
+    if (Object.keys(userStats).length === 0) {
+        container.innerHTML = '<span style="color:#aaa">Nessun importo da calcolare.</span>';
+        return;
+    }
+
+    // 5. Crea le Card
+    for (const [name, total] of Object.entries(userStats)) {
+        
+        const badge = document.createElement('div');
+        badge.style.cssText = `
+            background: #2d3436; 
+            padding: 10px 15px; 
+            border-radius: 6px; 
+            border: 1px solid #00d2d3; 
+            min-width: 140px;
+            text-align: center;
+        `;
+        
+        badge.innerHTML = `
+            <div style="font-size: 0.8rem; color: #dfe6e9; text-transform: uppercase; margin-bottom: 5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:150px;" title="${name}">${name}</div>
+            <div style="font-size: 1.3rem; font-weight: bold; color: #00d2d3;">€ ${total}</div>
+        `;
+        
+        container.appendChild(badge);
+    }
+}
