@@ -318,11 +318,29 @@
             <div class="copyright">&copy; 2026 Tuscany Camp. Design inspired by the passion for dance.</div>
         </div>
     </footer>
+    <div id="custom-modal" class="modal" style="display:none; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);">
+        <div class="modal-content" style="max-width: 400px; text-align: center; border: 1px solid var(--color-hot-pink);">
+            
+            <div style="margin-bottom: 20px;">
+                <i class="fas fa-user-lock" style="font-size: 3rem; color: var(--color-hot-pink);"></i>
+            </div>
+
+            <h3 id="modal-title" style="color:white; margin-bottom:15px;">Login Required</h3>
+            <p id="modal-message" style="margin-bottom:25px; color:#ccc;">You must be logged in to access the Entry Form.</p>
+            
+            <div class="modal-buttons" style="display:flex; gap:10px; justify-content:center;">
+                <button id="modal-btn-cancel" class="btn btn-outline" style="padding:10px 20px; display:none;">Cancel</button>
+                
+                <button id="modal-btn-ok" class="btn btn-primary" style="padding:10px 30px;">GO TO LOGIN</button>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script src="javascript/config.js"></script> 
     <script src="javascript/main.js"></script>
-    
+    <script src="javascript/email_service.js"></script>
     <script src="javascript/entry-formy.js"></script> 
 
 </body>

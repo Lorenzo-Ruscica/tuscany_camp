@@ -389,3 +389,42 @@ a:hover .user-avatar {
 .mobile-auth-item.active span {
     color: var(--color-hot-pink);
 }
+/* =========================================
+   PHOTOGALLERY MOBILE FIX (2 COLONNE ADATTIVE)
+   ========================================= */
+
+@media (max-width: 768px) {
+    
+    /* 1. La Griglia */
+    .gallery-grid { 
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important; /* 2 Colonne */
+        gap: 10px !important; 
+        
+        /* IMPORTANTE: Questo impedisce ai riquadri di allungarsi 
+           per pareggiare l'altezza della riga. Ognuno sarà alto quanto serve. */
+        align-items: start !important; 
+    }
+
+    /* 2. Il Riquadro (Cornice) */
+    .gallery-item {
+        /* Rimuove altezze fisse se c'erano */
+        height: auto !important; 
+        min-height: 0 !important;
+        
+        /* Rimuove sfondi neri che creano le strisce */
+        background: transparent !important; 
+        border: none !important; 
+        box-shadow: none !important; /* Opzionale: toglie l'ombra se da fastidio */
+        padding: 0 !important; /* Toglie spazi interni */
+    }
+
+    /* 3. L'Immagine */
+    .gallery-item img {
+        width: 100% !important; /* Occupa tutta la larghezza della colonna */
+        height: auto !important; /* L'altezza si calcola in proporzione (NIENTE STRETCH) */
+        display: block !important; /* Toglie il bordino invisibile sotto le immagini inline */
+        object-fit: cover !important; /* Assicura che riempia bene lo spazio */
+        border-radius: 8px; /* Un po' di estetica */
+    }
+}

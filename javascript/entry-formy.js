@@ -24,6 +24,7 @@ window.selectRegistrationStep = function(type) {
 
 
 document.addEventListener('DOMContentLoaded', async () => {
+    
 
     // --- 0. ASCOLTATORE EVENTO CUSTOM (Per collegare la funzione globale al modulo locale) ---
     document.addEventListener('registrationTypeSelected', (e) => {
@@ -397,17 +398,41 @@ function loadUserData(data) {
     }
 
     async function sendConfirmationEmail(data) {
-        const SERVICE_ID = "service_fik9j1g"; const TEMPLATE_ID = "template_2je1tdk"; 
+        console.log("Sending email...");
+        const SERVICE_ID = "service_fik9j1g"; 
+        const TEMPLATE_ID = "template_2je1tdk"; // ID Corretto
+
         const templateParams = {
-            to_email: data.user_email, man_name: data.man_name, man_surname: data.man_surname,
-            woman_name: data.woman_name, woman_surname: data.woman_surname, country: data.country,
-            teacher: data.teacher, age_group: data.age_group, phone: data.phone, email: data.user_email,
-            package_name: data.package, extra_nights: data.extra_nights,
-            arrival_date: data.arrival_date || "N/A", arrival_time: data.arrival_time || "--:--",
-            departure_date: data.departure_date || "N/A", departure_time: data.departure_time || "--:--"
+            to_email: data.user_email,
+            full_name: data.full_name,
+            // Usa 'N/A' se i campi sono vuoti per evitare spazi bianchi nell'email
+            man_name: data.man_name || "N/A", 
+            man_surname: data.man_surname || "",
+            woman_name: data.woman_name || "N/A", 
+            woman_surname: data.woman_surname || "",
+            country: data.country,
+            teacher: data.teacher,
+            age_group: data.age_group,
+            phone: data.phone,
+            package_name: data.package,
+            extra_nights: data.extra_nights,
+            arrival_date: data.arrival_date || "Not Set", 
+            arrival_time: data.arrival_time || "--:--",
+            departure_date: data.departure_date || "Not Set", 
+            departure_time: data.departure_time || "--:--",
+            total_amount: data.total_amount
         };
-        try { if (typeof emailjs !== 'undefined') await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams); } 
-        catch (e) { console.error("Email Error", e); }
+
+        try { 
+            if (typeof emailjs !== 'undefined') {
+                await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
+                console.log("Email sent successfully!");
+            } else {
+                console.warn("EmailJS not loaded");
+            }
+        } catch (e) { 
+            console.error("Email Error:", e); 
+        }
     }
 
     function showSuccess(title, msg, callback = null) {
@@ -453,4 +478,76 @@ function loadUserData(data) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     }
+    // ==========================================
+    // FUNZIONE MANCANTE: getFormData
+    // ==========================================
+    function getFormData() {
+        // 1. Recupera il tipo (salvato nell'input nascosto o default a couple)
+        const typeInput = document.getElementById('registrationType');
+        const type = typeInput ? typeInput.value : 'couple';
+
+        // 2. Recupera i valori dei nomi
+        // Usa una logica sicura: se l'elemento non esiste (raro), restituisce stringa vuota
+        const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+
+        let manN = getVal('manName');
+        let manS = getVal('manSurname');
+        let womN = getVal('femaleName');
+        let womS = getVal('femaleSurname');
+
+        // 3. Logica Nomi e Full Name in base al tipo scelto
+        let fullNameString = "";
+
+        if (type === 'man') {
+            // Se è Single Leader, svuota i campi donna e crea il nome singolo
+            womN = ""; womS = ""; 
+            fullNameString = `${manN} ${manS}`;
+        } 
+        else if (type === 'woman') {
+            // Se è Single Follower, svuota i campi uomo
+            manN = ""; manS = ""; 
+            fullNameString = `${womN} ${womS}`;
+        } 
+        else {
+            // Se è Coppia (o default)
+            fullNameString = `${manN} ${manS} & ${womN} ${womS}`;
+        }
+
+        // 4. Gestione Telefono (unisce prefisso e numero)
+        const prefix = document.getElementById('phonePrefix') ? document.getElementById('phonePrefix').value : '';
+        const phoneNum = document.getElementById('phone') ? document.getElementById('phone').value : '';
+        const fullPhone = prefix + " " + phoneNum;
+
+        // 5. Recupera Pacchetto selezionato
+        const pkgInput = document.querySelector('input[name="package"]:checked');
+        const pkgValue = pkgInput ? pkgInput.value : 'Silver'; // Default fallback
+
+        // 6. Recupera Notti Extra
+        const nightsVal = document.getElementById('extraNights') ? document.getElementById('extraNights').value : 0;
+
+        // 7. Ritorna l'oggetto completo
+        return {
+            full_name: fullNameString,
+            man_name: manN,
+            man_surname: manS,
+            woman_name: womN,
+            woman_surname: womS,
+            country: getVal('country'),
+            teacher: getVal('teacherName'),
+            age_group: getVal('ageGroup'),
+            phone: fullPhone,
+            email: getVal('email'),
+            user_email: getVal('email'), // Chiave doppia per sicurezza DB
+            package: pkgValue,
+            extra_nights: parseInt(nightsVal) || 0,
+            arrival_date: getVal('arrivalDate') || null,
+            arrival_time: getVal('arrivalTime') || null,
+            departure_date: getVal('departureDate') || null,
+            departure_time: getVal('departureTime') || null,
+            // Usa la variabile globale currentGrandTotal definita all'inizio del file
+            total_amount: currentGrandTotal 
+        };
+    }
+    // --- FUNZIONE INVIO EMAIL (EmailJS) ---
+    
 });
