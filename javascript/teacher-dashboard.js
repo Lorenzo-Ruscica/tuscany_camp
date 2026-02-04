@@ -1,102 +1,184 @@
 // ==========================================
-// FILE: js/teacher_dashboard.js
+// FILE: js/teacher_dashboard.js (TIMELINE VIEW)
 // ==========================================
 
 let currentTeacherId = null;
+let allBookings = []; 
 
 document.addEventListener('DOMContentLoaded', async () => {
     await checkTeacherAuth();
 });
 
-// 1. CHECK LOGIN E IDENTIFICAZIONE INSEGNANTE
+// 1. AUTENTICAZIONE
 async function checkTeacherAuth() {
-    const { data: { session } } = await window.supabase.auth.getSession();
+    const nameLabel = document.getElementById('teacher-name');
+    const container = document.getElementById('schedule-container');
 
-    if (!session) {
-        window.location.href = 'login.html'; // Se non loggato, vai al login
-        return;
+    try {
+        const { data: { session } } = await window.supabase.auth.getSession();
+        if (!session) { window.location.href = 'login.html'; return; }
+
+        const userEmail = session.user.email;
+        
+        const { data: teacher } = await window.supabase
+            .from('teachers')
+            .select('*')
+            .eq('email', userEmail)
+            .maybeSingle();
+
+        if (!teacher) {
+            container.innerHTML = `<div style="color:red; text-align:center; margin-top:30px;">Email non associata ad un insegnante.</div>`;
+            return;
+        }
+
+        currentTeacherId = teacher.id;
+        nameLabel.innerText = teacher.full_name;
+        
+        await loadMySchedule();
+
+    } catch (err) {
+        console.error(err);
+        nameLabel.innerText = "Error";
     }
-
-    const userEmail = session.user.email;
-    console.log("Utente loggato:", userEmail);
-
-    // Cerca se questa email appartiene a un insegnante
-    const { data: teacher, error } = await window.supabase
-        .from('teachers')
-        .select('*')
-        .eq('email', userEmail)
-        .maybeSingle();
-
-    if (error || !teacher) {
-        // Se l'utente è loggato ma non è un insegnante nel DB
-        alert("Accesso Negato: La tua email non è associata a nessun profilo insegnante.");
-        await window.supabase.auth.signOut();
-        window.location.href = 'index.html';
-        return;
-    }
-
-    // Trovato!
-    currentTeacherId = teacher.id;
-    document.getElementById('teacher-name').innerText = teacher.full_name;
-    
-    // Carica le lezioni
-    loadMySchedule();
 }
 
-// 2. CARICA LEZIONI
+// 2. CARICAMENTO DATI
 async function loadMySchedule() {
-    if (!currentTeacherId) return;
-
     const container = document.getElementById('schedule-container');
-    container.innerHTML = '<p style="text-align:center; color:#aaa;">Loading...</p>';
-
-    // Prendi le lezioni future (o tutte, come preferisci)
-    // Qui prendiamo tutte quelle NON cancellate, ordinate per data
+    
+    // Query completa
     const { data: bookings, error } = await window.supabase
         .from('bookings')
-        .select('*, registrations(full_name)')
+        .select(`
+            *, 
+            registrations ( full_name, phone, man_name, man_surname, woman_name, woman_surname )
+        `)
         .eq('teacher_id', currentTeacherId)
         .neq('status', 'cancelled')
         .order('lesson_date', { ascending: true })
         .order('start_time', { ascending: true });
 
-    if (!bookings || bookings.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:#aaa; margin-top:30px;">No upcoming lessons found.</p>';
+    if (error) {
+        container.innerHTML = `<p style="color:red; text-align:center;">Error loading data.</p>`;
         return;
     }
 
-    container.innerHTML = '';
-    let lastDate = '';
-
-    bookings.forEach(b => {
-        // Formatta la data
-        const dateObj = new Date(b.lesson_date);
-        const dateString = dateObj.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
-
-        // Se cambia la data, metti l'intestazione
-        if (dateString !== lastDate) {
-            container.innerHTML += `<div class="date-header">${dateString}</div>`;
-            lastDate = dateString;
-        }
-
-        // Trova il nome della coppia
-        let coupleName = "Unknown User";
-        if (b.registrations && b.registrations.full_name) coupleName = b.registrations.full_name;
-
-        // Crea la card
-        container.innerHTML += `
-            <div class="schedule-card">
-                <div>
-                    <div class="time-box">${b.start_time.slice(0,5)} - ${b.end_time.slice(0,5)}</div>
-                    <div class="couple-name">${coupleName}</div>
-                    <small style="color:#666;">Sala: ${b.admin_notes || 'A'}</small>
-                </div>
-            </div>
-        `;
-    });
+    allBookings = bookings || [];
+    renderTimeline(allBookings); 
 }
 
-// 3. LOGOUT
+// 3. RENDERIZZAZIONE "TIMELINE STYLE"
+function renderTimeline(bookingsToRender) {
+    const container = document.getElementById('schedule-container');
+    container.innerHTML = '';
+
+    if (bookingsToRender.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="far fa-calendar-times"></i><br>
+                No lessons found.
+            </div>`;
+        return;
+    }
+
+    // A. RAGGRUPPIAMO LE LEZIONI PER DATA
+    // Creiamo un oggetto: { "2026-05-22": [lezione1, lezione2], "2026-05-23": [...] }
+    const grouped = {};
+    bookingsToRender.forEach(b => {
+        if (!grouped[b.lesson_date]) {
+            grouped[b.lesson_date] = [];
+        }
+        grouped[b.lesson_date].push(b);
+    });
+
+    // B. ITERIAMO SUI GIORNI
+    for (const [date, dayBookings] of Object.entries(grouped)) {
+        
+        // 1. Formatta la data header (es. "Venerdì 22 Maggio")
+        const dateObj = new Date(date);
+        const dateNice = dateObj.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+        const dayName = dateNice.charAt(0).toUpperCase() + dateNice.slice(1); // Maiuscola iniziale
+
+        // 2. Crea il contenitore del giorno
+        const dayGroup = document.createElement('div');
+        dayGroup.className = 'day-group';
+
+        // 3. Aggiungi Header Data
+        let dayHTML = `
+            <div class="day-header">
+                <i class="far fa-calendar"></i> ${dayName}
+            </div>
+            <div class="timeline-wrapper">
+        `;
+
+        // 4. Aggiungi le lezioni di quel giorno (Time Slots)
+        dayBookings.forEach(b => {
+            // Nome
+            let displayName = "Private Lesson";
+            let phone = null;
+            if (b.registrations) {
+                if (b.registrations.full_name) displayName = b.registrations.full_name;
+                else {
+                    const m = b.registrations.man_name ? b.registrations.man_name : "";
+                    const w = b.registrations.woman_name ? b.registrations.woman_name : "";
+                    if(m && w) displayName = `${m} & ${w}`;
+                    else displayName = m || w;
+                }
+                phone = b.registrations.phone;
+            }
+
+            // Orario pulito (10:00 - 10:45)
+            const timeRange = `${b.start_time.slice(0,5)} - ${b.end_time.slice(0,5)}`;
+
+            // Bottoni Azione
+            let btns = '';
+            if(phone) {
+                const p = phone.replace(/\s+/g, '').replace(/-/g, '');
+                btns = `
+                    <div class="action-row">
+                        <a href="tel:${p}" class="btn-action"><i class="fas fa-phone"></i> Call</a>
+                        <a href="https://wa.me/${p}" target="_blank" class="btn-action btn-wa"><i class="fab fa-whatsapp"></i> Chat</a>
+                    </div>`;
+            }
+
+            // HTML del singolo SLOT
+            dayHTML += `
+                <div class="time-slot">
+                    <div class="time-label">${b.start_time.slice(0,5)}</div>
+                    
+                    <div class="lesson-card">
+                        <div class="lesson-couple">${displayName}</div>
+                        
+                        <div class="lesson-details">
+                            <span><i class="far fa-clock"></i> ${timeRange}</span>
+                            <span><i class="fas fa-map-marker-alt"></i> ${b.admin_notes || 'Room A'}</span>
+                        </div>
+                        
+                        ${btns}
+                    </div>
+                </div>
+            `;
+        });
+
+        dayHTML += `</div>`; // Chiude timeline-wrapper
+        dayGroup.innerHTML = dayHTML;
+        container.appendChild(dayGroup);
+    }
+}
+
+// 4. FILTRI
+window.filterSchedule = () => {
+    const inputDate = document.getElementById('filter-date').value;
+    if (!inputDate) { renderTimeline(allBookings); return; }
+    const filtered = allBookings.filter(b => b.lesson_date === inputDate);
+    renderTimeline(filtered);
+};
+
+window.resetFilter = () => {
+    document.getElementById('filter-date').value = '';
+    renderTimeline(allBookings);
+};
+
 window.logoutTeacher = async () => {
     await window.supabase.auth.signOut();
     window.location.href = 'login.html';

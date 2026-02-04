@@ -510,9 +510,9 @@ window.loadTeachersList = async () => {
     const { data: t } = await window.supabase.from('teachers').select('*').order('full_name');
     const tbody = document.getElementById('teachers-list-body');
     tbody.innerHTML = '';
+    
     if(t) {
         t.forEach(teacher => {
-            // Aggiungo visualizzazione Email
             const emailDisplay = teacher.email ? `<br><small style="color:#aaa">${teacher.email}</small>` : '';
             
             tbody.innerHTML += `
@@ -521,7 +521,11 @@ window.loadTeachersList = async () => {
                 <td>€ ${teacher.base_price}</td>
                 <td>${teacher.discipline || '-'}</td>
                 <td><span style="color:#0f0">Attivo</span></td>
-                <td><button onclick="deleteTeacher(${teacher.id})" style="color:red; background:none; border:none; cursor:pointer;">Elimina</button></td>
+                <td>
+                    <button onclick="deleteTeacher('${teacher.id}')" style="color:red; background:none; border:none; cursor:pointer; font-size:1.1rem;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
             </tr>`;
         });
     }
@@ -545,6 +549,49 @@ window.addNewTeacher = async () => {
     alert("Insegnante aggiunto!"); 
     loadTeachersList(); 
     loadTeachers();
+};
+// ==========================================
+// FUNZIONE MANCANTE: ELIMINA INSEGNANTE
+// ==========================================
+window.deleteTeacher = async (id) => {
+    // 1. Conferma di sicurezza
+    if(!confirm("SEI SICURO?\nEliminare l'insegnante cancellerà anche tutte le sue disponibilità e lezioni future.\nQuesta azione è irreversibile.")) return;
+
+    try {
+        // 2. Elimina le disponibilità (Turni) collegate
+        const { error: errAvail } = await window.supabase
+            .from('teacher_availability')
+            .delete()
+            .eq('teacher_id', id);
+            
+        if (errAvail) console.warn("Errore eliminazione disponibilità:", errAvail);
+
+        // 3. Elimina le lezioni (Bookings) collegate
+        const { error: errBook } = await window.supabase
+            .from('bookings')
+            .delete()
+            .eq('teacher_id', id);
+
+        if (errBook) console.warn("Errore eliminazione lezioni:", errBook);
+
+        // 4. Infine elimina l'insegnante
+        const { error } = await window.supabase
+            .from('teachers')
+            .delete()
+            .eq('id', id);
+
+        if(error) throw error;
+
+        alert("Insegnante eliminato con successo.");
+        
+        // 5. Ricarica le liste per aggiornare la pagina
+        loadTeachersList(); 
+        loadTeachers(); 
+
+    } catch (err) {
+        console.error(err);
+        alert("Errore durante l'eliminazione: " + err.message);
+    }
 };
 
 // ==========================================
@@ -989,4 +1036,5 @@ function updateUserTotals(bookings) {
         
         container.appendChild(badge);
     }
+    
 }
