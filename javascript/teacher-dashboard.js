@@ -3,7 +3,7 @@
 // ==========================================
 
 let currentTeacherId = null;
-let allBookings = []; 
+let allBookings = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
     await checkTeacherAuth();
@@ -19,7 +19,7 @@ async function checkTeacherAuth() {
         if (!session) { window.location.href = 'login.html'; return; }
 
         const userEmail = session.user.email;
-        
+
         const { data: teacher } = await window.supabase
             .from('teachers')
             .select('*')
@@ -33,7 +33,7 @@ async function checkTeacherAuth() {
 
         currentTeacherId = teacher.id;
         nameLabel.innerText = teacher.full_name;
-        
+
         await loadMySchedule();
 
     } catch (err) {
@@ -45,7 +45,7 @@ async function checkTeacherAuth() {
 // 2. CARICAMENTO DATI
 async function loadMySchedule() {
     const container = document.getElementById('schedule-container');
-    
+
     // Query completa
     const { data: bookings, error } = await window.supabase
         .from('bookings')
@@ -64,7 +64,7 @@ async function loadMySchedule() {
     }
 
     allBookings = bookings || [];
-    renderTimeline(allBookings); 
+    renderTimeline(allBookings);
 }
 
 // 3. RENDERIZZAZIONE "TIMELINE STYLE"
@@ -93,7 +93,7 @@ function renderTimeline(bookingsToRender) {
 
     // B. ITERIAMO SUI GIORNI
     for (const [date, dayBookings] of Object.entries(grouped)) {
-        
+
         // 1. Formatta la data header (es. "Venerdì 22 Maggio")
         const dateObj = new Date(date);
         const dateNice = dateObj.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -113,45 +113,66 @@ function renderTimeline(bookingsToRender) {
 
         // 4. Aggiungi le lezioni di quel giorno (Time Slots)
         dayBookings.forEach(b => {
-            // Nome
+            // Default setup per Private Lesson
             let displayName = "Private Lesson";
+            let cardStyle = "border-left: 4px solid var(--color-hot-pink);"; // Standard style
+            let iconHtml = '<i class="far fa-user"></i>';
             let phone = null;
-            if (b.registrations) {
-                if (b.registrations.full_name) displayName = b.registrations.full_name;
-                else {
-                    const m = b.registrations.man_name ? b.registrations.man_name : "";
-                    const w = b.registrations.woman_name ? b.registrations.woman_name : "";
-                    if(m && w) displayName = `${m} & ${w}`;
-                    else displayName = m || w;
+
+            const type = (b.lesson_type || 'private').toLowerCase();
+
+            // GESTIONE VISIVA PER TIPO
+            if (type === 'lecture') {
+                displayName = "LECTURE";
+                cardStyle = "border-left: 6px solid #feca57; background: #fff9e6;";
+                iconHtml = '<i class="fas fa-chalkboard-teacher" style="color:#feca57"></i>';
+            } else if (type === 'group lesson') {
+                displayName = "GROUP LESSON";
+                cardStyle = "border-left: 6px solid #54a0ff; background: #eaf6ff;";
+                iconHtml = '<i class="fas fa-users" style="color:#54a0ff"></i>';
+            } else {
+                // Standard Booking (Private)
+                if (b.registrations) {
+                    if (b.registrations.full_name) displayName = b.registrations.full_name;
+                    else {
+                        const m = b.registrations.man_name || "";
+                        const w = b.registrations.woman_name || "";
+                        if (m && w) displayName = `${m} & ${w}`;
+                        else displayName = m || w || "Private Lesson";
+                    }
+                    phone = b.registrations.phone;
                 }
-                phone = b.registrations.phone;
             }
 
             // Orario pulito (10:00 - 10:45)
-            const timeRange = `${b.start_time.slice(0,5)} - ${b.end_time.slice(0,5)}`;
+            const timeRange = `${b.start_time.slice(0, 5)} - ${b.end_time.slice(0, 5)}`;
 
-            // Bottoni Azione
+            // Bottoni Azione (Solo se c'è telefono e non è una Lecture generica)
             let btns = '';
-            if(phone) {
+            // Se è private e ha telefono mostriamo i tasti.
+            // Se è special, magari no, a meno che non ci siano note.
+            if (type === 'private' && phone) {
                 const p = phone.replace(/\s+/g, '').replace(/-/g, '');
                 btns = `
-                    <div class="action-row">
-                        <a href="tel:${p}" class="btn-action"><i class="fas fa-phone"></i> Call</a>
-                        <a href="https://wa.me/${p}" target="_blank" class="btn-action btn-wa"><i class="fab fa-whatsapp"></i> Chat</a>
+                     <div style="margin-top:10px; display:flex; gap:10px;">
+                        <a href="tel:${p}" style="color:#333; text-decoration:none; font-size:0.9rem; border:1px solid #ccc; padding:5px 10px; border-radius:4px;"><i class="fas fa-phone"></i> Call</a>
+                        <a href="https://wa.me/${p}" target="_blank" style="color:white; background:#25D366; text-decoration:none; font-size:0.9rem; padding:5px 10px; border-radius:4px;"><i class="fab fa-whatsapp"></i> Chat</a>
                     </div>`;
             }
 
             // HTML del singolo SLOT
             dayHTML += `
-                <div class="time-slot">
-                    <div class="time-label">${b.start_time.slice(0,5)}</div>
+                <div class="time-slot" style="margin-bottom:15px;">
+                    <div class="time-label" style="font-weight:bold; color:#666; margin-bottom:5px;">${b.start_time.slice(0, 5)}</div>
                     
-                    <div class="lesson-card">
-                        <div class="lesson-couple">${displayName}</div>
+                    <div class="lesson-card" style="box-shadow: 0 2px 5px rgba(0,0,0,0.05); padding:15px; border-radius:8px; background:white; ${cardStyle}">
+                        <div class="lesson-couple" style="font-size:1.1rem; font-weight:bold; color:#333; margin-bottom:5px;">
+                            ${iconHtml} ${displayName}
+                        </div>
                         
-                        <div class="lesson-details">
+                        <div class="lesson-details" style="color:#666; font-size:0.9rem;">
                             <span><i class="far fa-clock"></i> ${timeRange}</span>
-                            <span><i class="fas fa-map-marker-alt"></i> ${b.admin_notes || 'Room A'}</span>
+                            <span style="margin-left:10px;"><i class="fas fa-map-marker-alt"></i> ${b.admin_notes || 'Room A'}</span>
                         </div>
                         
                         ${btns}
@@ -160,7 +181,7 @@ function renderTimeline(bookingsToRender) {
             `;
         });
 
-        dayHTML += `</div>`; // Chiude timeline-wrapper
+        dayHTML += `</div></div>`; // Chiude timeline-wrapper e dayHTML (Wait, loop logic check below)
         dayGroup.innerHTML = dayHTML;
         container.appendChild(dayGroup);
     }
