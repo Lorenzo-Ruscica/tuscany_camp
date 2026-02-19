@@ -1605,7 +1605,35 @@ window.uploadPDF = async (type) => {
 // ==========================================
 
 // 1. CARICA STATISTICHE E IMPOSTAZIONI
+window.dbNewsletterEmails = [];
+window.manualNewsletterEmails = [];
+
 window.loadNewsletterStats = async () => {
+    // 0. Carica da Supabase (site_settings: newsletter_manual_emails)
+    try {
+        const { data: mnSetting } = await window.supabase
+            .from('site_settings')
+            .select('value')
+            .eq('key', 'newsletter_manual_emails')
+            .maybeSingle();
+
+        if (mnSetting && mnSetting.value) {
+            // Se è JSON, parsalo. Se è stringa raw (non dovrebbe, ma per sicurezza), gestisci.
+            // Assumiamo che salviamo JSON.stringify
+            try {
+                window.manualNewsletterEmails = JSON.parse(mnSetting.value);
+            } catch (jsonErr) {
+                // Fallback se fosse salvato come stringa CSV o altro
+                console.warn("Manual emails not JSON", jsonErr);
+                window.manualNewsletterEmails = [];
+            }
+        } else {
+            window.manualNewsletterEmails = [];
+        }
+    } catch (e) {
+        console.error("Errore caricamento email manuali da DB", e);
+    }
+
     // A. Carica Template ID salvato
     const { data: settings } = await window.supabase
         .from('site_settings')
@@ -1644,23 +1672,14 @@ window.loadNewsletterStats = async () => {
             uniqueEmails = regUsers.map(u => u.user_email);
         }
 
-        // Filtra, pulisci e deduplica
+        // Filtra base
         uniqueEmails = [...new Set(uniqueEmails.filter(e => e && e.trim() !== '' && e.includes('@')))];
-        uniqueEmails.sort(); // Ordina alfabeticamente
 
-        // Aggiorna Conteggio
-        stats.innerText = uniqueEmails.length;
-        window.cachedNewsletterEmails = uniqueEmails;
+        // SALVA IN GLOBALE
+        window.dbNewsletterEmails = uniqueEmails;
 
-        // Aggiorna Lista UI
-        const listContainer = document.getElementById('newsletter-email-list');
-        if (listContainer) {
-            if (uniqueEmails.length === 0) {
-                listContainer.innerHTML = '<em>Nessuna email trovata.</em>';
-            } else {
-                listContainer.innerHTML = uniqueEmails.map(email => `<div>${email}</div>`).join('');
-            }
-        }
+        // UPDATE UI (COMBINA CON MANUALI)
+        updateNewsletterList();
 
     } catch (err) {
         console.error("Errore newsletter stats:", err);
@@ -1670,6 +1689,102 @@ window.loadNewsletterStats = async () => {
     } finally {
         loader.style.display = 'none';
         stats.style.display = 'block';
+    }
+};
+
+window.addManualEmails = async () => {
+    const input = document.getElementById('manual-email-input');
+    const raw = input.value;
+    if (!raw.trim()) return alert("Inserisci delle email.");
+
+    // Split su virgola, spazio o a capo
+    const emails = raw.split(/[\s,]+/);
+    let addedCount = 0;
+
+    emails.forEach(e => {
+        const clean = e.trim();
+        // Validazione semplice
+        if (clean && clean.includes('@') && clean.includes('.')) {
+            if (!window.manualNewsletterEmails.includes(clean)) {
+                window.manualNewsletterEmails.push(clean);
+                addedCount++;
+            }
+        }
+    });
+
+    if (addedCount > 0) {
+        // SALVA IN SUPABASE
+        const { error } = await window.supabase
+            .from('site_settings')
+            .upsert({ key: 'newsletter_manual_emails', value: JSON.stringify(window.manualNewsletterEmails) }, { onConflict: 'key' });
+
+        if (error) {
+            alert("Errore salvataggio DB: " + error.message);
+        } else {
+            input.value = ''; // Pulisci input
+            updateNewsletterList();
+            alert(`${addedCount} email aggiunte manualmente e salvate su DB.`);
+        }
+    } else {
+        alert("Nessuna email valida trovata o già presenti.");
+    }
+};
+
+window.removeManualEmail = async (email) => {
+    window.manualNewsletterEmails = window.manualNewsletterEmails.filter(e => e !== email);
+
+    // UPDATE SUPABASE
+    const { error } = await window.supabase
+        .from('site_settings')
+        .upsert({ key: 'newsletter_manual_emails', value: JSON.stringify(window.manualNewsletterEmails) }, { onConflict: 'key' });
+
+    if (error) {
+        console.error("Errore salvataggio rimozione", error);
+        alert("Errore during saving removal: " + error.message);
+    }
+
+    updateNewsletterList();
+};
+
+window.updateNewsletterList = () => {
+    // 1. Combina DB e Manuali
+    let combined = [...window.dbNewsletterEmails, ...window.manualNewsletterEmails];
+
+    // 2. Deduplica e Ordina
+    combined = [...new Set(combined)];
+    combined.sort();
+
+    // 3. Update Globale per invio
+    window.cachedNewsletterEmails = combined;
+
+    // 4. Update UI
+    const stats = document.getElementById('newsletter-stats');
+    const listContainer = document.getElementById('newsletter-email-list');
+
+    if (stats) stats.innerText = combined.length;
+
+    if (listContainer) {
+        if (combined.length === 0) {
+            listContainer.innerHTML = '<em>Nessuna email trovata o aggiunta.</em>';
+        } else {
+            // Mostra DB normale, Manuali evidenziati? No, lista unica pulita.
+            // Magari indichiamo quali sono manuali? Troppo complesso per ora.
+            listContainer.innerHTML = combined.map(email => {
+                const isManual = window.manualNewsletterEmails.includes(email) && !window.dbNewsletterEmails.includes(email);
+
+                if (isManual) {
+                    return `
+                        <div style="display:flex; justify-content:space-between; align-items:center; color:#00d2d3;">
+                            <span>${email} (Manuale)</span>
+                            <button onclick="removeManualEmail('${email}')" style="background:none; border:none; color:#ff6b6b; cursor:pointer;" title="Rimuovi">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>`;
+                } else {
+                    return `<div>${email}</div>`;
+                }
+            }).join('');
+        }
     }
 };
 
