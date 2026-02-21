@@ -312,8 +312,8 @@ window.loadAllBookings = async () => {
     const { data: bookings } = await window.supabase
         .from('bookings')
         .select('*, teachers(full_name, pay_rate), registrations(full_name)')
-        .order('created_at', { ascending: false })
-        .limit(100); // Aumentato limit per ricerca migliore
+        .order('lesson_date', { ascending: false })
+        .limit(5000); // Elevato per recuperare tutto il necessario
 
     currentBookings = bookings || [];
     applyBookingFilter();
@@ -323,15 +323,28 @@ window.searchBookings = () => {
     applyBookingFilter();
 };
 
-function applyBookingFilter() {
+function getFilteredBookings() {
     const input = document.getElementById('search-booking');
     const term = input ? input.value.toLowerCase() : '';
 
-    const filtered = currentBookings.filter(b => {
+    const dateFrom = document.getElementById('filter-date-from')?.value;
+    const dateTo = document.getElementById('filter-date-to')?.value;
+
+    return currentBookings.filter(b => {
         const teacherName = b.teachers?.full_name?.toLowerCase() || '';
         const userName = b.registrations?.full_name?.toLowerCase() || '';
-        return teacherName.includes(term) || userName.includes(term);
+        const matchesTerm = teacherName.includes(term) || userName.includes(term);
+
+        let matchesDate = true;
+        if (dateFrom && b.lesson_date < dateFrom) matchesDate = false;
+        if (dateTo && b.lesson_date > dateTo) matchesDate = false;
+
+        return matchesTerm && matchesDate;
     });
+}
+
+function applyBookingFilter() {
+    const filtered = getFilteredBookings();
 
     // Filtra: Contabilità mostra solo lezioni private (Standard)
     const standardBookings = filtered.filter(b => !b.lesson_type || b.lesson_type === 'private');
@@ -339,9 +352,131 @@ function applyBookingFilter() {
     // Render
     renderAccountingTable(standardBookings);
     updateTeacherHours(filtered); // Conta tutte le lezioni (anche speciali) nel numero totale
-    updateUserTotals(standardBookings); // I totali utenti considerano solo le private
     updateStaffPay(filtered); // La paga staff considera tutto
 }
+
+window.downloadAccountingPDF = () => {
+    if (typeof html2pdf === 'undefined') {
+        return alert("Libreria PDF non caricata.");
+    }
+
+    const filtered = getFilteredBookings();
+    const standardBookings = filtered.filter(b => !b.lesson_type || b.lesson_type === 'private');
+
+    if (!standardBookings || standardBookings.length === 0) {
+        return alert("Nessuna prenotazione da esportare nel PDF con i filtri attuali.");
+    }
+
+    const dateFrom = document.getElementById('filter-date-from')?.value;
+    const dateTo = document.getElementById('filter-date-to')?.value;
+    const term = document.getElementById('search-booking')?.value || '';
+
+    let filterText = [];
+    if (term) filterText.push(`Ricerca: "${term}"`);
+    if (dateFrom) filterText.push(`Dal: ${dateFrom.split('-').reverse().join('/')}`);
+    if (dateTo) filterText.push(`Al: ${dateTo.split('-').reverse().join('/')}`);
+    const filterDisplay = filterText.length > 0 ? filterText.join(' | ') : 'Nessun filtro attivo (Tutti i dati)';
+
+    const printDiv = document.createElement('div');
+    printDiv.style.padding = '30px';
+    printDiv.style.color = '#333';
+    printDiv.style.backgroundColor = '#fff';
+    printDiv.style.fontFamily = "'Outfit', 'Helvetica Neue', Arial, sans-serif";
+
+    // CSS per stampare bene le tabelle su più pagine
+    let html = `
+        <style>
+            .pdf-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
+            .pdf-table th, .pdf-table td { border: 1px solid #e0e0e0; padding: 10px; text-align: left; }
+            .pdf-table th { background-color: #f55394; color: white; font-weight: bold; text-transform: uppercase; font-size: 10px;}
+            .pdf-table tr { page-break-inside: avoid; }
+            .pdf-table tr:nth-child(even) { background-color: #fcfcfc; }
+            .pdf-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #00d2d3; padding-bottom: 20px; }
+            .pdf-header h1 { color: #f55394; margin: 0; font-size: 26px; text-transform: uppercase; letter-spacing: 1px; }
+            .pdf-header h2 { color: #333; margin: 5px 0; font-size: 18px; }
+            .pdf-header p { color: #666; margin: 0; font-size: 12px; }
+            .pdf-footer { margin-top: 40px; font-size: 10px; color: #888; text-align: right; border-top: 1px solid #eee; padding-top: 10px; }
+        </style>
+        <div class="pdf-header">
+            <h1>Tuscany Camp</h1>
+            <h2>Report Contabilità - Lezioni Private</h2>
+            <p>${filterDisplay}</p>
+        </div>
+        <table class="pdf-table">
+            <thead>
+                <tr>
+                    <th width="8%">ID</th>
+                    <th width="15%">Data</th>
+                    <th width="12%">Ora</th>
+                    <th width="25%">Insegnante</th>
+                    <th width="25%">Utente / Coppia</th>
+                    <th width="10%">Prezzo</th>
+                    <th width="5%">Stato</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    let totaleCosti = 0;
+
+    standardBookings.forEach(b => {
+        const coupleName = b.registrations?.full_name || "N/A";
+        const teacherName = b.teachers?.full_name || "N/A";
+        const dateStr = b.lesson_date ? b.lesson_date.split('-').reverse().join('/') : '';
+        const timeStr = b.start_time ? b.start_time.slice(0, 5) : '';
+        const price = parseFloat(b.lesson_price) || 0;
+
+        let rowStyle = b.status === 'cancelled' ? 'color: #aaa; text-decoration: line-through;' : '';
+        let badgeStyle = '';
+        if (b.status === 'confirmed') badgeStyle = 'color: #2ecc71; font-weight: bold;';
+        if (b.status === 'cancelled') badgeStyle = 'color: #e74c3c;';
+
+        if (b.status !== 'cancelled') {
+            totaleCosti += price;
+        }
+
+        html += `
+            <tr style="${rowStyle}">
+                <td>#${b.id}</td>
+                <td><strong>${dateStr}</strong></td>
+                <td>${timeStr}</td>
+                <td>${teacherName}</td>
+                <td style="font-weight: bold; color: #333;">${coupleName}</td>
+                <td>€ ${price}</td>
+                <td style="${badgeStyle}">${b.status.substring(0, 4)}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 20px; text-align: right; padding: 15px; background: #f9f9f9; border-radius: 5px; border: 1px solid #eee;">
+            <h3 style="margin: 0; color: #333; font-size: 16px;">
+                Totale Registrato: <span style="color: #f55394;">€ ${totaleCosti}</span>
+            </h3>
+            <p style="margin: 5px 0 0 0; font-size: 10px; color: #888;">* I valori sbarrati (annullati) non sono conteggiati</p>
+        </div>
+
+        <div class="pdf-footer">
+            Generato dal Sistema Admin Tuscany Camp il: ${new Date().toLocaleDateString('it-IT')} alle ${new Date().toLocaleTimeString('it-IT')}
+        </div>
+    `;
+
+    printDiv.innerHTML = html;
+
+    const opt = {
+        margin: [10, 10, 10, 10],
+        filename: 'Report_Contabilita.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(printDiv).save().catch(err => alert("Errore generazione PDF: " + err.message));
+};
 
 // ==========================================
 // GESTIONE PAGAMENTI / SALDI
@@ -421,24 +556,24 @@ window.loadBalances = async () => {
                 : `<span style="color:#00d2d3; font-weight:bold;"><i class="fas fa-check-circle"></i> Tutto Saldato</span>`;
 
             let actionsHtml = d.unpaidCount > 0
-                ? `<button onclick="markAsPaid('${uid}')" class="btn btn-outline" style="border-color:#00d2d3; color:#00d2d3; padding:5px 10px; font-size:0.9rem;"><i class="fas fa-check"></i> Segna Saldato (€${d.totalOwed})</button>`
+                ? `<button onclick="markAsPaid('${uid}')" style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(56, 239, 125, 0.3); font-size: 0.9rem; margin-right: 5px; transition: transform 0.2s;"><i class="fas fa-check"></i> Segna Saldato (€${d.totalOwed})</button>`
                 : `<span style="color:#aaa; font-style:italic;">Nessuna azione</span>`;
 
             // Opzione Extra: Annulla pagamenti utente (per sicurezza)
             if (d.paidCount > 0) {
-                actionsHtml += `<br><button onclick="revertAllUserPayments('${uid}')" class="btn btn-outline" style="border-color:#ff9f43; color:#ff9f43; padding:3px 8px; font-size:0.7rem; margin-top:5px; border:none; text-decoration:underline;"><i class="fas fa-undo"></i> Azzera tutti i saldi</button>`;
+                actionsHtml += `<button onclick="revertAllUserPayments('${uid}')" class="btn btn-outline" style="border-color:#ff9f43; color:#ff9f43; padding:5px 10px; font-size:0.8rem; margin-top:5px; border-radius: 5px; cursor: pointer; background: transparent;"><i class="fas fa-undo"></i> Resetta</button>`;
             }
 
             // Manteniamo i dati per usarli
             window.__unpaidIdsData[uid] = d.unpaidIds;
 
             tbody.innerHTML += `
-                <tr data-name="${d.name.toLowerCase()}">
+                <tr data-name="${d.name.toLowerCase()}" data-owed="${d.totalOwed}" data-unpaid-count="${d.unpaidCount}" data-uid="${uid}">
                     <td><strong>${d.name}</strong></td>
                     <td><b style="color:var(--color-hot-pink);">${d.unpaidCount}</b> <span style="font-size:0.8rem; color:#aaa;">(Pagate in passato: ${d.paidCount})</span></td>
                     <td style="font-weight:bold; color:var(--color-hot-pink); font-size:1.1rem;">€ ${d.totalOwed}</td>
                     <td>${statusHtml}</td>
-                    <td>${actionsHtml}</td>
+                    <td><div style="display: flex; flex-direction: column; gap: 5px; align-items: flex-start;">${actionsHtml}</div></td>
                 </tr>
             `;
         }
@@ -450,6 +585,107 @@ window.loadBalances = async () => {
         console.error(err);
         tbody.innerHTML = '<tr><td colspan="5" style="color:red; text-align:center;">Errore caricamento dati: ' + err.message + '</td></tr>';
     }
+};
+
+window.downloadBalancesPDF = () => {
+    if (typeof html2pdf === 'undefined') {
+        return alert("Libreria PDF non caricata.");
+    }
+
+    // Raccogli solo le righe che sono correntemente visibili dalla tabella
+    const rows = document.querySelectorAll('#balances-body tr');
+    let validData = [];
+
+    rows.forEach(row => {
+        if (row.style.display !== 'none' && row.getAttribute('data-name')) {
+            const owed = parseFloat(row.getAttribute('data-owed')) || 0;
+            // Mostriamo nel PDF solo chi ha debiti in sospeso
+            if (owed > 0) {
+                validData.push({
+                    name: row.querySelector('td strong').innerText,
+                    unpaidCount: row.getAttribute('data-unpaid-count') || "0",
+                    amountStr: `€ ${owed}`
+                });
+            }
+        }
+    });
+
+    if (validData.length === 0) {
+        return alert("Nessun utente con pagamenti in sospeso da esportare (controlla i filtri).");
+    }
+
+    const printDiv = document.createElement('div');
+    printDiv.style.padding = '30px';
+    printDiv.style.color = '#333';
+    printDiv.style.backgroundColor = '#fff';
+    printDiv.style.fontFamily = "'Outfit', 'Helvetica Neue', Arial, sans-serif";
+
+    const filterInput = document.getElementById('search-balance')?.value || '';
+    const filterText = filterInput ? `Filtro: "${filterInput}"` : 'Tutti i pagamenti in sospeso';
+
+    let html = `
+        <style>
+            .pdf-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+            .pdf-table th, .pdf-table td { border: 1px solid #ddd; padding: 12px; text-align: left; vertical-align: middle; }
+            .pdf-table th { background-color: #00d2d3; color: white; font-weight: bold; text-transform: uppercase; font-size: 11px;}
+            .pdf-table tr { page-break-inside: avoid; }
+            .pdf-table tr:nth-child(even) { background-color: #f9f9f9; }
+            .pdf-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #00d2d3; padding-bottom: 20px; }
+            .pdf-header h1 { color: #f55394; margin: 0; font-size: 26px; text-transform: uppercase; letter-spacing: 1px; }
+            .pdf-header h2 { color: #333; margin: 5px 0; font-size: 18px; }
+            .pdf-header p { color: #666; margin: 0; font-size: 12px; }
+            .checkbox-box { width: 22px; height: 22px; border: 2px solid #555; border-radius: 4px; display: inline-block; background: white;}
+            .pdf-footer { margin-top: 40px; font-size: 10px; color: #888; text-align: right; border-top: 1px solid #eee; padding-top: 10px; }
+        </style>
+        <div class="pdf-header">
+            <h1>Tuscany Camp</h1>
+            <h2>Modulo Controllo Pagamenti Lezioni</h2>
+            <p>${filterText}</p>
+        </div>
+        <table class="pdf-table">
+            <thead>
+                <tr>
+                    <th width="45%">Utente / Coppia</th>
+                    <th width="15%" style="text-align:center;">Lezioni da Saldare</th>
+                    <th width="20%" style="text-align:right;">Importo Totale</th>
+                    <th width="20%" style="text-align:center;">Spunta se Saldato</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    validData.forEach(d => {
+        html += `
+            <tr>
+                <td><strong>${d.name}</strong></td>
+                <td style="text-align:center; color: #555;">${d.unpaidCount}</td>
+                <td style="text-align:right; font-weight:bold; font-size: 14px; color: #e84393;">${d.amountStr}</td>
+                <td style="text-align:center;"><div class="checkbox-box"></div></td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+        
+        <div class="pdf-footer">
+            Generato dal Sistema Admin Tuscany Camp il: ${new Date().toLocaleDateString('it-IT')} alle ${new Date().toLocaleTimeString('it-IT')}
+        </div>
+    `;
+
+    printDiv.innerHTML = html;
+
+    const opt = {
+        margin: [10, 10, 10, 10],
+        filename: 'Controllo_Pagamenti.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(printDiv).save().catch(err => alert("Errore generazione PDF: " + err.message));
 };
 
 window.markAsPaid = async (uid) => {
@@ -1406,66 +1642,8 @@ function timeToMinutes(timeStr) {
     return (h * 60) + m;
 }
 // ==========================================
-// CALCOLO TOTALI PAGAMENTI UTENTI
+// FINE GESTIONE PAGAMENTI / SALDI
 // ==========================================
-
-function updateUserTotals(bookings) {
-    const container = document.getElementById('users-payment-summary');
-    if (!container) return;
-
-    container.innerHTML = ''; // Pulisce
-
-    const userStats = {};
-
-    bookings.forEach(b => {
-        // 1. Ignora le cancellate
-        if (b.status === 'cancelled') return;
-
-        // 2. Trova il nome (Gestisce sia Booking da Form che Manuali)
-        let name = "Sconosciuto";
-        if (b.registrations && b.registrations.full_name) {
-            name = b.registrations.full_name;
-        } else if (b.user_id) {
-            name = "ID: " + b.user_id.slice(0, 5);
-        }
-
-        // 3. Somma il prezzo
-        const price = parseFloat(b.lesson_price) || 0;
-
-        if (!userStats[name]) {
-            userStats[name] = 0;
-        }
-        userStats[name] += price;
-    });
-
-    // 4. Se vuoto
-    if (Object.keys(userStats).length === 0) {
-        container.innerHTML = '<span style="color:#aaa">Nessun importo da calcolare.</span>';
-        return;
-    }
-
-    // 5. Crea le Card
-    for (const [name, total] of Object.entries(userStats)) {
-
-        const badge = document.createElement('div');
-        badge.style.cssText = `
-            background: #2d3436; 
-            padding: 10px 15px; 
-            border-radius: 6px; 
-            border: 1px solid #00d2d3; 
-            min-width: 140px;
-            text-align: center;
-        `;
-
-        badge.innerHTML = `
-            <div style="font-size: 0.8rem; color: #dfe6e9; text-transform: uppercase; margin-bottom: 5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:150px;" title="${name}">${name}</div>
-            <div style="font-size: 1.3rem; font-weight: bold; color: #00d2d3;">€ ${total}</div>
-        `;
-
-        container.appendChild(badge);
-    }
-
-}
 
 // ==========================================
 // CALCOLO PAGA STAFF (NUOVO)

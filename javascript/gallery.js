@@ -4,15 +4,15 @@
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
-    
+
     // --- 1. DYNAMIC COUNTDOWN (SUPABASE) ---
     const elDays = document.getElementById('days');
-    
+
     // Eseguiamo la logica timer solo se gli elementi esistono nella pagina (es. Home)
-    if(elDays) {
-        
+    if (elDays) {
+
         // Data di default (Fallback) se il database non risponde o è vuoto
-        let targetDateString = "2026-05-23T09:00:00"; 
+        let targetDateString = "2026-05-23T09:00:00";
 
         // 1. Tenta di scaricare la data aggiornata da Supabase
         if (window.supabase) {
@@ -39,17 +39,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         const elSeconds = document.getElementById('seconds');
         const countdownContainer = document.getElementById('countdown');
 
-        const timer = setInterval(() => {
+        let timer;
+
+        const updateTimer = () => {
             const now = new Date().getTime();
             const diff = eventDate - now;
 
             // Se il tempo è scaduto
-            if (diff < 0) { 
-                clearInterval(timer); 
-                if(countdownContainer) {
+            if (diff < 0) {
+                if (timer) clearInterval(timer);
+                if (countdownContainer) {
                     countdownContainer.innerHTML = "<h3 style='color:var(--color-hot-pink); text-align:center; margin-top:10px;'>EVENT STARTED!</h3>";
                 }
-                return; 
+                return;
             }
 
             // Calcoli matematici
@@ -59,11 +61,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const s = Math.floor((diff % (1000 * 60)) / 1000);
 
             // Aggiornamento DOM
-            if(elDays) elDays.innerText = d < 10 ? "0" + d : d;
-            if(elHours) elHours.innerText = h < 10 ? "0" + h : h;
-            if(elMinutes) elMinutes.innerText = m < 10 ? "0" + m : m;
-            if(elSeconds) elSeconds.innerText = s < 10 ? "0" + s : s;
-        }, 1000);
+            if (elDays) elDays.innerText = d < 10 ? "0" + d : d;
+            if (elHours) elHours.innerText = h < 10 ? "0" + h : h;
+            if (elMinutes) elMinutes.innerText = m < 10 ? "0" + m : m;
+            if (elSeconds) elSeconds.innerText = s < 10 ? "0" + s : s;
+        };
+
+        // Aggiorna subito senza aspettare 1 secondo
+        updateTimer();
+        timer = setInterval(updateTimer, 1000);
     }
 
     // --- 2. LIGHTBOX GALLERY (INVARIATO) ---
@@ -77,7 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             item.addEventListener('click', () => {
                 const img = item.querySelector('img');
                 if (img) {
-                    lightbox.style.display = "flex"; 
+                    lightbox.style.display = "flex";
                     lightbox.style.alignItems = "center";
                     lightbox.style.justifyContent = "center";
                     lightboxImg.src = img.src;
@@ -87,7 +93,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         const closeL = () => { lightbox.style.display = "none"; document.body.style.overflow = ""; };
-        
+
         if (closeBtn) closeBtn.addEventListener('click', closeL);
         lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeL(); });
     }

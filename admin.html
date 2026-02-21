@@ -111,7 +111,7 @@
                         <input type="datetime-local" id="timer-date-input"
                             style="width: 100%; padding: 12px; background: #333; border: 1px solid #555; color: white; border-radius: 5px;">
                     </div>
-                    <button onclick="saveTimerSettings()" class="btn btn-primary">
+                    <button onclick="saveTimerDate()" class="btn btn-primary" style="margin-top: 10px; width: 100%;">
                         <i class="fas fa-save"></i> SALVA DATA
                     </button>
                 </div>
@@ -237,16 +237,6 @@
                             <p style="color: #666; font-style: italic;">Caricamento statistiche...</p>
                         </div>
                     </div>
-                    <div class="admin-card"
-                        style="background: #1e1e1e; border-left: 4px solid #00d2d3; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
-                        <h3 style="margin-top: 0; font-size: 1.1rem; color: #fff;">
-                            <i class="fas fa-wallet"></i> Totale Prenotazioni per Utente
-                        </h3>
-                        <div id="users-payment-summary"
-                            style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 15px;">
-                            <p style="color: #666; font-style: italic;">Calcolo importi...</p>
-                        </div>
-                    </div>
 
                     <div class="admin-card"
                         style="background: #1e1e1e; border-left: 4px solid #feca57; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
@@ -259,8 +249,23 @@
                         </div>
                     </div>
 
-                    <div class="search-bar">
-                        <input type="text" id="search-booking" placeholder="Cerca..." onkeyup="searchBookings()">
+                    <div class="search-bar"
+                        style="display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: #1e1e1e; padding: 15px; border-radius: 8px; border: 1px solid #333; margin-bottom: 20px;">
+                        <div style="display: flex; gap: 10px; align-items: center; flex: 1; flex-wrap: wrap;">
+                            <input type="text" id="search-booking" placeholder="Cerca insegnante o studente..."
+                                onkeyup="searchBookings()"
+                                style="flex: 1; min-width: 200px; padding: 10px; background: #333; border: 1px solid #555; color: white; border-radius: 5px;">
+                            <span style="color: #aaa; font-size: 0.9rem;">Da:</span>
+                            <input type="date" id="filter-date-from" onchange="searchBookings()"
+                                style="padding: 10px; background: #333; border: 1px solid #555; color: white; border-radius: 5px;">
+                            <span style="color: #aaa; font-size: 0.9rem;">A:</span>
+                            <input type="date" id="filter-date-to" onchange="searchBookings()"
+                                style="padding: 10px; background: #333; border: 1px solid #555; color: white; border-radius: 5px;">
+                        </div>
+                        <button onclick="downloadAccountingPDF()"
+                            style="background: linear-gradient(135deg, #f55394, #ff9f43); color:white; border:none; padding:12px 20px; border-radius:5px; cursor:pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(245, 83, 148, 0.4); text-transform: uppercase; font-size: 0.9rem; margin-top: 10px;">
+                            <i class="fas fa-file-pdf" style="margin-right: 5px;"></i> Scarica Riepilogo PDF
+                        </button>
                     </div>
                     <div class="table-responsive">
                         <table class="admin-table">
@@ -283,9 +288,15 @@
                 <div id="tab-balances" class="tab-content">
                     <h1>Saldato & Conti <span style="font-size:0.6em; color:#888;">(Pagamenti Lezioni Private)</span>
                     </h1>
-                    <div class="search-bar">
+                    <div class="search-bar"
+                        style="display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: #1e1e1e; padding: 15px; border-radius: 8px; border: 1px solid #333; margin-bottom: 20px;">
                         <input type="text" id="search-balance" placeholder="Cerca coppia o singolo..."
-                            onkeyup="filterBalances()">
+                            onkeyup="filterBalances()"
+                            style="flex: 1; min-width: 200px; padding: 10px; background: #333; border: 1px solid #555; color: white; border-radius: 5px;">
+                        <button onclick="downloadBalancesPDF()"
+                            style="background: linear-gradient(135deg, #00d2d3, #0984e3); color:white; border:none; padding:12px 20px; border-radius:5px; cursor:pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(0, 210, 211, 0.4); text-transform: uppercase; font-size: 0.9rem;">
+                            <i class="fas fa-file-pdf" style="margin-right: 5px;"></i> Scarica PDF Pagamenti
+                        </button>
                     </div>
                     <div class="table-responsive">
                         <table class="admin-table">
