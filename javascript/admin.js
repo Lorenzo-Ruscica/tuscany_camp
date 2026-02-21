@@ -83,6 +83,7 @@ window.showTab = (tabId) => {
         loadActiveShifts();
         loadSpecialBookings();
     }
+    if (tabId === 'balances') loadBalances();
     if (tabId === 'guest-teachers') loadGuestTeachersSettings();
     if (tabId === 'pdf-mgmt') loadPDFSettings();
 };
@@ -341,6 +342,176 @@ function applyBookingFilter() {
     updateUserTotals(standardBookings); // I totali utenti considerano solo le private
     updateStaffPay(filtered); // La paga staff considera tutto
 }
+
+// ==========================================
+// GESTIONE PAGAMENTI / SALDI
+// ==========================================
+window.__unpaidIdsData = {};
+
+window.loadBalances = async () => {
+    const tbody = document.getElementById('balances-body');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Caricamento...</td></tr>';
+
+    try {
+        // 1. Carica lezioni già saldate da site_settings
+        const { data: settings } = await window.supabase
+            .from('site_settings')
+            .select('value')
+            .eq('key', 'paid_bookings')
+            .maybeSingle();
+
+        let paidBookings = [];
+        if (settings && settings.value) {
+            paidBookings = JSON.parse(settings.value);
+            if (!Array.isArray(paidBookings)) paidBookings = [];
+        }
+
+        // 2. Carica tutte le prenotazioni
+        const { data: bookings, error } = await window.supabase
+            .from('bookings')
+            .select('*, registrations(full_name)')
+            .neq('status', 'cancelled')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // 3. Elabora dati utente
+        const usersData = {};
+        window.__unpaidIdsData = {};
+
+        bookings.forEach(b => {
+            // Ignoriamo lessons non standard / group lecture senza utente ecc.
+            if (b.lesson_type && b.lesson_type !== 'private') return;
+
+            const uid = b.user_id;
+            if (!uid) return;
+
+            let name = "Account ID: " + uid.slice(0, 5);
+            if (b.registrations && b.registrations.full_name) {
+                name = b.registrations.full_name;
+            }
+
+            if (!usersData[uid]) {
+                usersData[uid] = { name: name, unpaidIds: [], paidCount: 0, unpaidCount: 0, totalOwed: 0 };
+            }
+
+            const isPaid = paidBookings.includes(b.id);
+            if (isPaid) {
+                usersData[uid].paidCount++;
+            } else {
+                usersData[uid].unpaidCount++;
+                usersData[uid].unpaidIds.push(b.id);
+                usersData[uid].totalOwed += parseFloat(b.lesson_price) || 0;
+            }
+        });
+
+        // 4. Mostra nella tabella
+        tbody.innerHTML = '';
+        let hasData = false;
+
+        for (const uid in usersData) {
+            const d = usersData[uid];
+            // Nascondiamo chi non ha mai prenotato!
+            if (d.paidCount === 0 && d.unpaidCount === 0) continue;
+            hasData = true;
+
+            const statusHtml = d.unpaidCount > 0
+                ? `<span style="color:#f55394; font-weight:bold;"><i class="fas fa-exclamation-triangle"></i> Da Saldare</span>`
+                : `<span style="color:#00d2d3; font-weight:bold;"><i class="fas fa-check-circle"></i> Tutto Saldato</span>`;
+
+            let actionsHtml = d.unpaidCount > 0
+                ? `<button onclick="markAsPaid('${uid}')" class="btn btn-outline" style="border-color:#00d2d3; color:#00d2d3; padding:5px 10px; font-size:0.9rem;"><i class="fas fa-check"></i> Segna Saldato (€${d.totalOwed})</button>`
+                : `<span style="color:#aaa; font-style:italic;">Nessuna azione</span>`;
+
+            // Opzione Extra: Annulla pagamenti utente (per sicurezza)
+            if (d.paidCount > 0) {
+                actionsHtml += `<br><button onclick="revertAllUserPayments('${uid}')" class="btn btn-outline" style="border-color:#ff9f43; color:#ff9f43; padding:3px 8px; font-size:0.7rem; margin-top:5px; border:none; text-decoration:underline;"><i class="fas fa-undo"></i> Azzera tutti i saldi</button>`;
+            }
+
+            // Manteniamo i dati per usarli
+            window.__unpaidIdsData[uid] = d.unpaidIds;
+
+            tbody.innerHTML += `
+                <tr data-name="${d.name.toLowerCase()}">
+                    <td><strong>${d.name}</strong></td>
+                    <td><b style="color:var(--color-hot-pink);">${d.unpaidCount}</b> <span style="font-size:0.8rem; color:#aaa;">(Pagate in passato: ${d.paidCount})</span></td>
+                    <td style="font-weight:bold; color:var(--color-hot-pink); font-size:1.1rem;">€ ${d.totalOwed}</td>
+                    <td>${statusHtml}</td>
+                    <td>${actionsHtml}</td>
+                </tr>
+            `;
+        }
+
+        if (!hasData) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Nessuna lezione privata trovata.</td></tr>';
+        }
+    } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="5" style="color:red; text-align:center;">Errore caricamento dati: ' + err.message + '</td></tr>';
+    }
+};
+
+window.markAsPaid = async (uid) => {
+    if (!confirm("Confermi che l'utente / coppia ha SALDATO tutte le sue lezioni attualmente in sospeso?")) return;
+
+    const newPaidIds = window.__unpaidIdsData[uid] || [];
+    if (newPaidIds.length === 0) return;
+
+    // 1. Legge database attuale per non sovrascrivere altri
+    const { data: settings } = await window.supabase.from('site_settings').select('value').eq('key', 'paid_bookings').maybeSingle();
+    let currentPaid = settings && settings.value ? JSON.parse(settings.value) : [];
+    if (!Array.isArray(currentPaid)) currentPaid = [];
+
+    // 2. Unisco l'array senza duplicati
+    const updatedPaid = [...new Set([...currentPaid, ...newPaidIds])];
+
+    // 3. Salva di nuovo
+    const { error } = await window.supabase.from('site_settings').upsert({ key: 'paid_bookings', value: JSON.stringify(updatedPaid) }, { onConflict: 'key' });
+
+    if (error) {
+        alert("Errore salvataggio: " + error.message);
+    } else {
+        alert("Conto saldato con successo!");
+        loadBalances();
+    }
+};
+
+window.revertAllUserPayments = async (uid) => {
+    if (!confirm("ATTENZIONE! Vuoi annullare TUTTI i pagamenti registrati per questo utente? Verrà segnato tutto di nuovo come 'Da Saldare'.")) return;
+
+    // Trova tutti gli ID di questo utente
+    const { data: userBookings } = await window.supabase.from('bookings').select('id').eq('user_id', uid);
+    if (!userBookings || userBookings.length === 0) return;
+
+    const userBookingIds = userBookings.map(b => b.id);
+
+    // Leggi DB attuale
+    const { data: settings } = await window.supabase.from('site_settings').select('value').eq('key', 'paid_bookings').maybeSingle();
+    let currentPaid = settings && settings.value ? JSON.parse(settings.value) : [];
+    if (!Array.isArray(currentPaid)) currentPaid = [];
+
+    // Togli tutti gli ID di questo utente dai pagati
+    currentPaid = currentPaid.filter(id => !userBookingIds.includes(id));
+
+    // Salva nel DB
+    const { error } = await window.supabase.from('site_settings').upsert({ key: 'paid_bookings', value: JSON.stringify(currentPaid) }, { onConflict: 'key' });
+
+    if (error) {
+        alert("Errore: " + error.message);
+    } else {
+        alert("Resettato con successo.");
+        loadBalances();
+    }
+};
+
+window.filterBalances = () => {
+    const input = document.getElementById('search-balance').value.toLowerCase();
+    document.querySelectorAll('#balances-body tr').forEach(row => {
+        const name = row.getAttribute('data-name') || '';
+        row.style.display = name.includes(input) ? '' : 'none';
+    });
+};
 
 // --- GESTIONE LEZIONI SPECIALI (Disponibilità) ---
 window.loadSpecialBookings = async () => {
@@ -1896,4 +2067,4 @@ window.sendNewsletter = async (isTest) => {
     alert(`Completato!\nInviate con successo: ${successCount}\nErrori: ${failCount}`);
     btnAll.disabled = false;
     progressContainer.style.display = 'none';
-};
+};  

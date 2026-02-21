@@ -47,6 +47,9 @@
                 <button class="nav-btn" onclick="showTab('accounting')">
                     <i class="fas fa-calculator"></i> Contabilità
                 </button>
+                <button class="nav-btn" onclick="showTab('balances')">
+                    <i class="fas fa-hand-holding-usd"></i> Gestione Pagamenti
+                </button>
                 <button class="nav-btn" onclick="showTab('registrations')">
                     <i class="fas fa-users"></i> Iscritti Entry Form
                 </button>
@@ -77,6 +80,11 @@
                     <button class="nav-btn" onclick="showSection('timer', this)">
                         <i class="fas fa-hourglass-half"></i> Timer Home
                     </button>
+                    <!-- NUOVO BOTTONE EDITOR VISUALE -->
+                    <a href="index.html?visualEditor=true" class="nav-btn"
+                        style="text-decoration:none; display:flex; align-items:center; background: rgba(0, 210, 211, 0.1); color: #00d2d3; border: 1px solid #00d2d3; margin-top: 10px;">
+                        <i class="fas fa-edit" style="margin-right: 10px;"></i> Modifica Testi Sito
+                    </a>
                 </div>
 
                 <!-- AZIONI FINALI -->
@@ -268,6 +276,29 @@
                                 </tr>
                             </thead>
                             <tbody id="accounting-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="tab-balances" class="tab-content">
+                    <h1>Saldato & Conti <span style="font-size:0.6em; color:#888;">(Pagamenti Lezioni Private)</span>
+                    </h1>
+                    <div class="search-bar">
+                        <input type="text" id="search-balance" placeholder="Cerca coppia o singolo..."
+                            onkeyup="filterBalances()">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Utente / Coppia</th>
+                                    <th>Lezioni in sospeso</th>
+                                    <th>Totale da Saldare</th>
+                                    <th>Stato Globale</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody id="balances-body"></tbody>
                         </table>
                     </div>
                 </div>
