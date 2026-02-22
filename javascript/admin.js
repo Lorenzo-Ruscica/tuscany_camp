@@ -31,7 +31,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    console.log("Admin loggato:", userEmail);
 
     // --- B. INIZIALIZZAZIONE ELEMENTI ---
     teacherSelectAvail = document.getElementById('avail-teacher');
@@ -277,7 +276,7 @@ window.loadSchedule = async () => {
             <tr>
                 <td>${b.start_time.slice(0, 5)} - ${b.end_time.slice(0, 5)}</td>
                 <td><strong>${coupleName}</strong></td>
-                <td>${b.admin_notes || 'Sala A'}</td> 
+                <td>${b.admin_notes || 'Sala A'}</td>
                 <td></td>
             </tr>`;
     });
@@ -451,7 +450,7 @@ window.downloadAccountingPDF = () => {
     html += `
             </tbody>
         </table>
-        
+
         <div style="margin-top: 20px; text-align: right; padding: 15px; background: #f9f9f9; border-radius: 5px; border: 1px solid #eee;">
             <h3 style="margin: 0; color: #333; font-size: 16px;">
                 Totale Registrato: <span style="color: #f55394;">€ ${totaleCosti}</span>
@@ -668,7 +667,7 @@ window.downloadBalancesPDF = () => {
     html += `
             </tbody>
         </table>
-        
+
         <div class="pdf-footer">
             Generato dal Sistema Admin Tuscany Camp il: ${new Date().toLocaleDateString('it-IT')} alle ${new Date().toLocaleTimeString('it-IT')}
         </div>
@@ -804,19 +803,19 @@ function renderAccountingTable(bookings) {
         const coupleName = b.registrations?.full_name || "N/A";
 
         const btnEdit = b.status !== 'cancelled' ? `
-            <button onclick="openEditModal(${b.id}, '${b.lesson_date}', '${b.start_time}', '${b.end_time}', ${b.lesson_price})" 
+            <button onclick="openEditModal(${b.id}, '${b.lesson_date}', '${b.start_time}', '${b.end_time}', ${b.lesson_price})"
                     style="color:#ff9f43; background:none; border:none; cursor:pointer; margin-right:5px;" title="Modifica">
                 <i class="fas fa-edit"></i>
             </button>` : '';
 
         const btnCancel = b.status !== 'cancelled' ? `
-            <button onclick="cancelBookingAdmin(${b.id})" 
+            <button onclick="cancelBookingAdmin(${b.id})"
                     style="color:#f55394; background:none; border:none; cursor:pointer; margin-right:5px;" title="Annulla">
                 <i class="fas fa-ban"></i>
             </button>` : '<span style="font-size:0.8rem">(Annullato)</span>';
 
         const btnDelete = `
-            <button onclick="deleteBookingPermanent(${b.id})" 
+            <button onclick="deleteBookingPermanent(${b.id})"
                     style="color:red; background:none; border:none; cursor:pointer;" title="ELIMINA DEL TUTTO">
                 <i class="fas fa-trash"></i>
             </button>`;
@@ -996,14 +995,14 @@ window.loadRegistrations = async () => {
         <td>€ ${r.total_amount}</td>
         <td><span style="color:#0f0">${r.payment_status}</span></td>
         <td style="text-align: right; white-space: nowrap;">
-            <button onclick="viewRegistrationDetails('${r.id}')" 
-                    style="color:#00d2d3; background:none; border:none; cursor:pointer; margin-right: 10px;" 
+            <button onclick="viewRegistrationDetails('${r.id}')"
+                    style="color:#00d2d3; background:none; border:none; cursor:pointer; margin-right: 10px;"
                     title="Vedi Dettagli Completi">
                 <i class="fas fa-eye"></i>
             </button>
 
-            <button onclick="deleteEntry('${r.id}')" 
-                    style="color:red; background:none; border:none; cursor:pointer;" 
+            <button onclick="deleteEntry('${r.id}')"
+                    style="color:red; background:none; border:none; cursor:pointer;"
                     title="Elimina Iscrizione">
                 <i class="fas fa-trash"></i>
             </button>
@@ -1095,11 +1094,11 @@ window.loadTeachersList = async () => {
                 <td style="color:#2ecc71">€ ${teacher.pay_rate || 0}</td>
                 <td>${teacher.discipline || '-'}</td>
                 <td>
-                    <button onclick="openEditTeacherModal('${teacher.id}', '${safeName}', '${safeEmail}', ${teacher.base_price}, '${safeDisc}', ${teacher.pay_rate || 0})" 
+                    <button onclick="openEditTeacherModal('${teacher.id}', '${safeName}', '${safeEmail}', ${teacher.base_price}, '${safeDisc}', ${teacher.pay_rate || 0})"
                         style="color:#3498db; background:none; border:none; cursor:pointer; font-size:1.1rem; margin-right:10px;" title="Modifica">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="deleteTeacher('${teacher.id}')" 
+                    <button onclick="deleteTeacher('${teacher.id}')"
                         style="color:#e74c3c; background:none; border:none; cursor:pointer; font-size:1.1rem;" title="Elimina">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -1116,7 +1115,7 @@ window.loadTeachersList = async () => {
 // ==========================================
 window.openEditTeacherModal = (id, name, email, price, discipline, payRate) => {
     // Popola e apri un modale (lo creiamo al volo o usiamo un prompt evoluto? Meglio un prompt veloce per ora o un modale "rigido")
-    // Dato che non ho un modale HTML pronto per Teacher, uso un approccio "Quick Edit" con Prompt a cascata o un modale JS creato al volo.
+    // Dato che non ho un modale HTML pronto per Teacher, uso un approccio "Quick Edit" con Prompt a cascata o un modale "rigido" creato al volo.
     // MA l'utente vuole un tasto. Facciamo apparire il modale generico "admin-edit-modal" adattandolo? No, è specifico per booking.
     // Creiamo un modale semplice via JS (Overlay).
 
@@ -1312,8 +1311,8 @@ window.loadSystemUsers = async () => {
                 <td>${lastSign}</td>
                 <td>${statusBadge}</td>
                 <td>
-                    <button onclick="deleteSystemUser('${u.id}')" 
-                            style="color:red; background:none; border:none; cursor:pointer;" 
+                    <button onclick="deleteSystemUser('${u.id}')"
+                            style="color:red; background:none; border:none; cursor:pointer;"
                             title="Elimina Account Definitivamente">
                         <i class="fas fa-trash"></i> Elimina
                     </button>
@@ -1338,7 +1337,6 @@ window.deleteSystemUser = async (uuid) => {
 // FUNZIONE INVIO EMAIL (EMAILJS)
 // ==========================================
 async function sendEmailNotification(type, bookingData, userEmail, userName) {
-    console.log(`Sending email to ${userEmail} for ${type}...`);
 
     const templateParams = {
         to_email: userEmail,       // Destinatario
@@ -1355,7 +1353,6 @@ async function sendEmailNotification(type, bookingData, userEmail, userName) {
         const TEMPLATE_ID = "template_szh5dao";
 
         await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
-        console.log("Email sent successfully!");
     } catch (error) {
         console.error("EmailJS Error:", error);
     }
@@ -1765,8 +1762,6 @@ window.toggleSetting = async (key) => {
         alert("Errore aggiornamento impostazione: " + error.message);
         // Revert UI se fallisce
         checkbox.checked = !isEnabled;
-    } else {
-        console.log(`Setting ${key} updated to ${isEnabled}`);
     }
 };
 
@@ -2008,7 +2003,6 @@ window.loadNewsletterStats = async () => {
         const { data: allUsers, error: rpcError } = await window.supabase.rpc('get_all_user_emails');
 
         if (!rpcError && allUsers) {
-            console.log("Newsletter: fetched via RPC", allUsers.length);
             uniqueEmails = allUsers.map(u => u.email); // La funzione ritorna oggetti {email: "..."}
         } else {
             console.warn("Newsletter: RPC failed, falling back to registrations table.", rpcError);

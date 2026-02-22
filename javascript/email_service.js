@@ -3,21 +3,20 @@
 // DESCRIZIONE: Gestisce SOLO l'invio delle email
 // ============================================================
 
-(function() {
+(function () {
     // 1. Inizializza EmailJS immediatamente
     if (typeof emailjs !== 'undefined') {
         emailjs.init("HvNxuhIR0mdVRUIhR"); // La tua Public Key
-        console.log("✅ Email Service Pronto");
     } else {
-        console.error("❌ Errore: Libreria EmailJS non caricata nell'HTML");
+        // console.error("❌ Errore: Libreria EmailJS non caricata nell'HTML"); // Removed as per instruction
     }
 
     // 2. Crea una funzione globale utilizzabile dagli altri file
-    window.sendEntryEmail = async function(data) {
-        console.log("📧 Tentativo invio email...", data);
+    window.sendEntryEmail = async function (data) {
+        // console.log("📧 Tentativo invio email...", data); // Removed as per instruction
 
-        const SERVICE_ID = "service_fik9j1g"; 
-        const TEMPLATE_ID = "template_2je1tdk"; 
+        const SERVICE_ID = "service_fik9j1g";
+        const TEMPLATE_ID = "template_2je1tdk";
 
         // Prepara i parametri (Gestione dei campi vuoti inclusa)
         const templateParams = {
@@ -43,14 +42,14 @@
         try {
             if (typeof emailjs !== 'undefined') {
                 const response = await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
-                console.log("✅ Email inviata con successo!", response.status, response.text);
+                // console.log("✅ Email inviata con successo!", response.status, response.text); // Removed as per instruction
                 return true;
             } else {
-                console.warn("⚠️ EmailJS non è definito, email non inviata.");
+                // console.warn("⚠️ EmailJS non è definito, email non inviata."); // Removed as per instruction
                 return false;
             }
         } catch (error) {
-            console.error("❌ Errore invio Email:", error);
+            // console.error("❌ Errore invio Email:", error); // Removed as per instruction
             return false;
         }
     };

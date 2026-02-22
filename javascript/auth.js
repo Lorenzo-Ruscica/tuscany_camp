@@ -4,7 +4,7 @@
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    
+
     // --- ELEMENTI DOM ---
     const btnLogin = document.getElementById('btn-login');
     const btnSignup = document.getElementById('btn-signup');
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnSignup.classList.toggle('active', !showLogin);
             formLogin.classList.toggle('active', showLogin);
             formSignup.classList.toggle('active', !showLogin);
-            if(authMessage) authMessage.style.display = 'none';
+            if (authMessage) authMessage.style.display = 'none';
         };
 
         btnLogin.addEventListener('click', () => switchTab(true));
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (formSignup) {
         formSignup.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const firstName = document.getElementById('regName').value;
             const lastName = document.getElementById('regSurname').value;
             const email = document.getElementById('regEmail').value;
@@ -65,16 +65,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             btn.disabled = true;
             btn.innerText = "Creating Account...";
-            if(authMessage) authMessage.style.display = 'none';
+            if (authMessage) authMessage.style.display = 'none';
 
             try {
                 if (!window.supabase) throw new Error("Supabase non connesso.");
-                
+
                 const { error } = await window.supabase.auth.signUp({
                     email: email,
                     password: password,
-                    options: { 
-                        data: { first_name: firstName, last_name: lastName } 
+                    options: {
+                        data: { first_name: firstName, last_name: lastName }
                     }
                 });
 
@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 authMessage.innerText = "Registrazione riuscita! Ora puoi fare il Login.";
                 authMessage.style.display = 'block';
                 formSignup.reset();
-                setTimeout(() => { if(btnLogin) btnLogin.click(); }, 1500);
+                setTimeout(() => { if (btnLogin) btnLogin.click(); }, 1500);
 
             } catch (err) {
                 authMessage.className = "auth-message error";
@@ -97,13 +97,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-// ==========================================
+    // ==========================================
     // 4. LOGIN (Sign In) - CON REINDIRIZZAMENTO INTELLIGENTE
     // ==========================================
     if (formLogin) {
         formLogin.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             const btn = formLogin.querySelector('button');
@@ -111,11 +111,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // UI: Disabilita bottone
             btn.disabled = true;
             btn.innerText = "Logging in...";
-            if(authMessage) authMessage.style.display = 'none';
+            if (authMessage) authMessage.style.display = 'none';
 
             try {
                 if (!window.supabase) throw new Error("Supabase non connesso.");
-                
+
                 // 1. ESEGUI IL LOGIN
                 const { data, error } = await window.supabase.auth.signInWithPassword({
                     email: email,
@@ -132,8 +132,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // A. CHECK AMMINISTRATORI
                 // Aggiungi qui le email che devono accedere al pannello admin
                 const admins = [
-                    'admin@tuscanycamp.com', 
-                    'mirko@gozzoli.com', 
+                    'admin@tuscanycamp.com',
+                    'mirko@gozzoli.com',
                     'lorenzo.ruscica@outlook.it'
                 ];
 
@@ -162,21 +162,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     sessionStorage.removeItem('redirectAfterLogin');
                     window.location.href = redirectUrl;
                 } else {
-                    window.location.href = "index.html"; 
+                    window.location.href = "index.html";
                 }
                 // ---------------------------------------------------------
 
             } catch (err) {
                 // Gestione Errori
                 console.error("Login Error:", err);
-                if(authMessage) {
+                if (authMessage) {
                     authMessage.className = "auth-message error";
                     authMessage.innerText = "Email o Password errati."; // O err.message per dettagli
                     authMessage.style.display = 'block';
                 } else {
                     alert("Login Failed: " + err.message);
                 }
-                
+
                 // Reset Bottone
                 btn.disabled = false;
                 btn.innerText = "LOG IN";
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
         forgotLink.addEventListener('click', (e) => {
             e.preventDefault();
             resetModal.style.display = 'flex';
-            if(resetEmailInput) {
+            if (resetEmailInput) {
                 resetEmailInput.value = '';
                 resetEmailInput.focus();
             }
@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnCancelReset) {
         btnCancelReset.addEventListener('click', (e) => {
             e.preventDefault();
-            if(resetModal) resetModal.style.display = 'none';
+            if (resetModal) resetModal.style.display = 'none';
         });
     }
 
@@ -216,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnConfirmReset) {
         btnConfirmReset.addEventListener('click', async (e) => {
             e.preventDefault();
-            
+
             const email = resetEmailInput.value.trim();
             if (!email) {
                 alert("Please enter your email.");
@@ -231,12 +231,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 1. CALCOLO URL DINAMICO
                 // Recupera il percorso base (es. /tuscany_camp/)
                 const path = window.location.pathname;
-                const directory = path.substring(0, path.lastIndexOf('/')); 
-                
+                const directory = path.substring(0, path.lastIndexOf('/'));
+
                 // NOTA BENE: Assicurati che il file HTML creato prima si chiami ESATTAMENTE 'update_password.html'
                 const redirectUrl = window.location.origin + directory + '/update_password.html';
-
-                console.log("Redirect URL generato:", redirectUrl); // Utile per debug
 
                 // 2. CHIAMATA SUPABASE
                 const { error } = await window.supabase.auth.resetPasswordForEmail(email, {
@@ -246,11 +244,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (error) throw error;
 
                 // 3. SUCCESSO
-                if(resetModal) resetModal.style.display = 'none';
-                
+                if (resetModal) resetModal.style.display = 'none';
+
                 const msg = "Check your inbox for the password reset link.\nClicking it will let you set a new password.";
-                
-                if(window.showCustomAlert) {
+
+                if (window.showCustomAlert) {
                     await window.showCustomAlert("Email Sent", msg);
                 } else {
                     alert(msg);

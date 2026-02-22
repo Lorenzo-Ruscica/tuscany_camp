@@ -25,7 +25,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (data && data.value) {
                     targetDateString = data.value;
-                    console.log("📅 Timer sincronizzato con Admin:", targetDateString);
                 }
             } catch (err) {
                 console.warn("⚠️ Errore lettura Timer (Uso default):", err);
