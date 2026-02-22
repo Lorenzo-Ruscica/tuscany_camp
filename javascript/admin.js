@@ -2033,7 +2033,7 @@ window.loadNewsletterStats = async () => {
     } catch (err) {
         console.error("Errore newsletter stats:", err);
         stats.innerText = "Err";
-        const listContainer = document.getElementById('newsletter-email-list');
+        const listContainer = document.getElementById('newsletter-db-list');
         if (listContainer) listContainer.innerText = "Errore caricamento: " + err.message;
     } finally {
         loader.style.display = 'none';
@@ -2096,43 +2096,50 @@ window.removeManualEmail = async (email) => {
 };
 
 window.updateNewsletterList = () => {
-    // 1. Combina DB e Manuali
-    let combined = [...window.dbNewsletterEmails, ...window.manualNewsletterEmails];
+    // 1. Array separati
+    const dbUnique = [...new Set(window.dbNewsletterEmails)].sort();
 
-    // 2. Deduplica e Ordina
-    combined = [...new Set(combined)];
-    combined.sort();
+    // Le manuali vere e proprie sono quelle non presenti nel DB
+    const manualUnique = [...new Set(window.manualNewsletterEmails.filter(e => !dbUnique.includes(e)))].sort();
 
-    // 3. Update Globale per invio
+    // 2. Combina per l'invio e update global
+    let combined = [...dbUnique, ...manualUnique];
     window.cachedNewsletterEmails = combined;
 
-    // 4. Update UI
+    // 3. Update UI Statistiche Generali
     const stats = document.getElementById('newsletter-stats');
-    const listContainer = document.getElementById('newsletter-email-list');
-
     if (stats) stats.innerText = combined.length;
 
-    if (listContainer) {
-        if (combined.length === 0) {
-            listContainer.innerHTML = '<em>Nessuna email trovata o aggiunta.</em>';
-        } else {
-            // Mostra DB normale, Manuali evidenziati? No, lista unica pulita.
-            // Magari indichiamo quali sono manuali? Troppo complesso per ora.
-            listContainer.innerHTML = combined.map(email => {
-                const isManual = window.manualNewsletterEmails.includes(email) && !window.dbNewsletterEmails.includes(email);
+    // 4. Selettori UI per le liste separate
+    const dbList = document.getElementById('newsletter-db-list');
+    const manualList = document.getElementById('newsletter-manual-list');
+    const countDb = document.getElementById('count-db-list');
+    const countManual = document.getElementById('count-manual-list');
 
-                if (isManual) {
-                    return `
-                        <div style="display:flex; justify-content:space-between; align-items:center; color:#00d2d3;">
-                            <span>${email} (Manuale)</span>
-                            <button onclick="removeManualEmail('${email}')" style="background:none; border:none; color:#ff6b6b; cursor:pointer;" title="Rimuovi">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>`;
-                } else {
-                    return `<div>${email}</div>`;
-                }
-            }).join('');
+    if (countDb) countDb.innerText = dbUnique.length;
+    if (countManual) countManual.innerText = manualUnique.length;
+
+    // Render Lista DB
+    if (dbList) {
+        if (dbUnique.length === 0) {
+            dbList.innerHTML = '<em style="color:#777;">Nessuna email nel database.</em>';
+        } else {
+            dbList.innerHTML = dbUnique.map(email => `<div style="padding: 3px 0; border-bottom: 1px solid #333;">${email}</div>`).join('');
+        }
+    }
+
+    // Render Lista Manuale
+    if (manualList) {
+        if (manualUnique.length === 0) {
+            manualList.innerHTML = '<em style="color:#777;">Nessuna email inserita manualmente.</em>';
+        } else {
+            manualList.innerHTML = manualUnique.map(email => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding: 3px 0; border-bottom: 1px solid #333; color:#feca57;">
+                    <span>${email}</span>
+                    <button onclick="removeManualEmail('${email}')" style="background:none; border:none; color:#ff6b6b; cursor:pointer; font-size:1.1rem; padding: 0 5px;" title="Rimuovi">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>`).join('');
         }
     }
 };
