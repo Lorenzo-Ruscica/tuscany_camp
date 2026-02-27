@@ -33,16 +33,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 2. Avvia il calcolo del tempo
         const eventDate = new Date(targetDateString).getTime();
-        const elHours = document.getElementById('hours');
-        const elMinutes = document.getElementById('minutes');
-        const elSeconds = document.getElementById('seconds');
-        const countdownContainer = document.getElementById('countdown');
-
         let timer;
 
         const updateTimer = () => {
             const now = new Date().getTime();
             const diff = eventDate - now;
+
+            const currDays = document.getElementById('days');
+            const currHours = document.getElementById('hours');
+            const currMinutes = document.getElementById('minutes');
+            const currSeconds = document.getElementById('seconds');
+            const countdownContainer = document.getElementById('countdown');
 
             // Se il tempo è scaduto
             if (diff < 0) {
@@ -60,10 +61,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const s = Math.floor((diff % (1000 * 60)) / 1000);
 
             // Aggiornamento DOM
-            if (elDays) elDays.innerText = d < 10 ? "0" + d : d;
-            if (elHours) elHours.innerText = h < 10 ? "0" + h : h;
-            if (elMinutes) elMinutes.innerText = m < 10 ? "0" + m : m;
-            if (elSeconds) elSeconds.innerText = s < 10 ? "0" + s : s;
+            if (currDays) currDays.innerText = d < 10 ? "0" + d : d;
+            if (currHours) currHours.innerText = h < 10 ? "0" + h : h;
+            if (currMinutes) currMinutes.innerText = m < 10 ? "0" + m : m;
+            if (currSeconds) currSeconds.innerText = s < 10 ? "0" + s : s;
         };
 
         // Aggiorna subito senza aspettare 1 secondo
