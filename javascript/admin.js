@@ -50,11 +50,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.showTab = (tabId) => {
     // A. Gestione Sezioni Principali
     const dashboardSection = document.getElementById('section-dashboard');
-    const timerSection = document.getElementById('section-timer');
 
-    // Mostra Dashboard, Nascondi Timer
     if (dashboardSection) dashboardSection.style.display = 'block';
-    if (timerSection) timerSection.style.display = 'none';
 
     // B. Gestione Bottoni Menu Laterale
     // Rimuove 'active' da TUTTI i bottoni
@@ -85,6 +82,7 @@ window.showTab = (tabId) => {
     if (tabId === 'balances') loadBalances();
     if (tabId === 'guest-teachers') loadGuestTeachersSettings();
     if (tabId === 'pdf-mgmt') loadPDFSettings();
+    if (tabId === 'timer') loadCurrentTimer();
 };
 
 // --- LOGOUT ---
@@ -1507,27 +1505,7 @@ window.addEventListener('click', (e) => {
     // GESTIONE NAVIGAZIONE SCHEDE (Tabs)
     // ==========================================
 
-    window.showSection = (sectionId, btnClicked) => {
-        // A. Gestione Sezioni Principali
-        const dashboardSection = document.getElementById('section-dashboard');
-        const timerSection = document.getElementById('section-timer');
 
-        if (sectionId === 'timer') {
-            // Nascondi Dashboard, Mostra Timer
-            if (dashboardSection) dashboardSection.style.display = 'none';
-            if (timerSection) timerSection.style.display = 'block';
-        }
-        // (Se in futuro aggiungi altre sezioni, metti qui gli else if)
-
-        // B. Gestione Bottoni Menu Laterale
-        // Rimuove 'active' da TUTTI i bottoni (compresi quelli delle tab dashboard)
-        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-
-        // Aggiunge 'active' SOLO al bottone del Timer
-        if (btnClicked) {
-            btnClicked.classList.add('active');
-        }
-    };
 
     // ... (Lascia qui sotto il codice del Timer saveTimerSettings e loadTimerDate che ti ho dato prima)
 });
@@ -1556,11 +1534,11 @@ async function loadCurrentTimer() {
 window.saveTimerDate = async () => {
     const newVal = document.getElementById('timer-date-input').value;
 
-    if (!newVal) return alert("Please select a date.");
+    if (!newVal) return alert("Seleziona una data valida.");
 
     const btn = document.querySelector('button[onclick="saveTimerDate()"]');
-    const oldText = btn.innerText;
-    btn.innerText = "Saving...";
+    const oldHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvataggio...';
     btn.disabled = true;
 
     try {
@@ -1570,11 +1548,13 @@ window.saveTimerDate = async () => {
             .eq('key', 'countdown_end');
 
         if (error) throw error;
-        alert("Timer updated successfully! Check the Home Page.");
-    } catch (e) {
-        alert("Error: " + e.message);
+
+        alert("Data del timer salvata con successo!");
+    } catch (err) {
+        console.error(err);
+        alert("Errore durante il salvataggio: " + err.message);
     } finally {
-        btn.innerText = oldText;
+        btn.innerHTML = oldHtml;
         btn.disabled = false;
     }
 };
