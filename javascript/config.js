@@ -213,8 +213,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             .maybeSingle();
 
         if (data && data.value) {
-            const texts = JSON.parse(data.value);
-            window.__dynamicSiteTexts = texts; // Passato all'editor se aperto
+            let texts = JSON.parse(data.value);
+
+            // --- PROTEZIONE ANTI-ZOMBIE (Bypass Visual Editor per il box Date) ---
+            const keysToDelete = [];
+            for (const key of Object.keys(texts)) {
+                if (key.includes('.hero-right-col') || key.includes('.event-date-box') || key.includes('date-days') || key.includes('date-month') || key.includes('section#home > div > div')) {
+                    keysToDelete.push(key);
+                }
+            }
+            keysToDelete.forEach(k => delete texts[k]);
+
+            window.__dynamicSiteTexts = texts; // Passato all'editor se aperto, ma PULITO
 
             // Applica i testi al DOM (assicuriamoci che window loading sia completato)
             setTimeout(() => {

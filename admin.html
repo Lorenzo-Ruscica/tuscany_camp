@@ -674,24 +674,53 @@
             </div>
 
             <div id="tab-timer" class="tab-content" style="padding:20px;">
-                <h1>Gestione Timer Home Page</h1>
-                <p style="color:#888; margin-bottom:20px;">Imposta la data e l'ora di fine per il countdown visualizzato
-                    in Homepage.</p>
+                <h1>Hero Section (Home Page)</h1>
+                <p style="color:#888; margin-bottom:20px;">Gestisci i contenuti dinamici che appaiono in evidenza nella
+                    parte alta della Homepage.</p>
 
-                <div class="card"
-                    style="background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 20px; max-width: 500px;">
-                    <h3 style="color:var(--color-hot-pink); margin-top:0;"><i class="fas fa-clock"></i> Data Scadenza
-                        Countdown</h3>
-                    <div style="background:#222; padding:15px; border-radius:5px; margin-top: 15px;">
-                        <label style="color:#aaa; display:block; margin-bottom:10px;">Seleziona la data
-                            dell'evento</label>
-                        <input type="datetime-local" id="timer-date-input"
-                            style="width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #444; color: white; margin-bottom:15px; background: #333; border-radius: 4px;">
-                        <button onclick="saveTimerDate()"
-                            style="width: 100%; box-sizing: border-box; background: linear-gradient(135deg, #CC1A69, #F55394); color: white; border: none; padding: 12px; font-size: 1.1rem; border-radius: 5px; font-weight: bold; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 10px rgba(245, 83, 148, 0.3);">
-                            <i class="fas fa-save"></i> SALVA DATA
-                        </button>
+                <div style="display:flex; gap:20px; flex-wrap:wrap;">
+
+                    <!-- BOX TIMER -->
+                    <div class="card"
+                        style="flex:1; min-width:300px; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 20px;">
+                        <h3 style="color:var(--color-hot-pink); margin-top:0;"><i class="fas fa-clock"></i> Data
+                            Scadenza
+                            Countdown</h3>
+                        <div style="background:#222; padding:15px; border-radius:5px; margin-top: 15px;">
+                            <label style="color:#aaa; display:block; margin-bottom:10px;">Seleziona la data dell'evento
+                                (ferma il timer)</label>
+                            <input type="datetime-local" id="timer-date-input"
+                                style="width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #444; color: white; margin-bottom:15px; background: #333; border-radius: 4px;">
+                            <button onclick="saveTimerDate()"
+                                style="width: 100%; box-sizing: border-box; background: linear-gradient(135deg, #CC1A69, #F55394); color: white; border: none; padding: 12px; font-size: 1.1rem; border-radius: 5px; font-weight: bold; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 10px rgba(245, 83, 148, 0.3);">
+                                <i class="fas fa-save"></i> SALVA DATA
+                            </button>
+                        </div>
                     </div>
+
+                    <!-- BOX DATE DELL'EVENTO -->
+                    <div class="card"
+                        style="flex:1; min-width:300px; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 20px;">
+                        <h3 style="color:#00d2d3; margin-top:0;"><i class="fas fa-calendar-alt"></i> Date Visibili (Box
+                            Destra)</h3>
+                        <div style="background:#222; padding:15px; border-radius:5px; margin-top: 15px;">
+                            <label style="color:#aaa; display:block; margin-bottom:5px;">Giorni (es. "23 &bull;
+                                24")</label>
+                            <input type="text" id="hero-date-days" placeholder="Es. 23 &bull; 24"
+                                style="width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #444; color: white; margin-bottom:15px; background: #333; border-radius: 4px;">
+
+                            <label style="color:#aaa; display:block; margin-bottom:5px;">Mese e Anno (es. "MAGGIO
+                                2026")</label>
+                            <input type="text" id="hero-date-month" placeholder="Es. MAGGIO 2026"
+                                style="width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #444; color: white; margin-bottom:15px; background: #333; border-radius: 4px;">
+
+                            <button onclick="saveHeroDates()"
+                                style="width: 100%; box-sizing: border-box; background: linear-gradient(135deg, #00d2d3, #0984e3); color: white; border: none; padding: 12px; font-size: 1.1rem; border-radius: 5px; font-weight: bold; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 10px rgba(0, 210, 211, 0.3);">
+                                <i class="fas fa-save"></i> SALVA TESTI DATE
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 

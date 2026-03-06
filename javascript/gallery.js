@@ -72,6 +72,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         timer = setInterval(updateTimer, 1000);
     }
 
+    // --- X. HERO DATES DYNAMIC TEXT (SUPABASE) ---
+    // Gestione indipendente dal Timer per evitare conflitti con vecchi replace
+    if (document.getElementById('home-date-days') || document.getElementById('home-date-month')) {
+        let heroDaysText = "23 &bull; 24";
+        let heroMonthText = "MAY 2026";
+
+        if (window.supabase) {
+            try {
+                const { data } = await window.supabase
+                    .from('site_settings')
+                    .select('value')
+                    .eq('key', 'hero_dates')
+                    .maybeSingle();
+
+                if (data && data.value) {
+                    const parsed = JSON.parse(data.value);
+                    if (parsed.days) heroDaysText = parsed.days;
+                    if (parsed.month) heroMonthText = parsed.month;
+                }
+            } catch (err) {
+                console.warn("⚠️ Errore lettura Hero Dates:", err);
+            }
+        }
+
+        // Funzione per applicare al DOM ad intervalli (per combattere il sovrascritture di config.js)
+        const applyHeroDates = () => {
+            const elDays = document.getElementById('home-date-days');
+            const elMonth = document.getElementById('home-date-month');
+
+            // Applica i valori originali senza flash fastidiosi
+            if (elDays && elDays.innerHTML !== heroDaysText) elDays.innerHTML = heroDaysText;
+            if (elMonth && elMonth.innerHTML !== heroMonthText) elMonth.innerHTML = heroMonthText;
+        };
+
+        // Applica subito
+        applyHeroDates();
+
+        // E teniamo allineato per un po' di tempo a causa del caricatore testi di config.js
+        const heroInterval = setInterval(applyHeroDates, 200);
+        // Stoppiamo dopo 5 secondi perché ormai config.js ha sicuramente finito
+        setTimeout(() => clearInterval(heroInterval), 5000);
+    }
+
     // --- 2. LIGHTBOX GALLERY (INVARIATO) ---
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');

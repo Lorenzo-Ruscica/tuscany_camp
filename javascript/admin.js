@@ -1518,15 +1518,33 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadCurrentTimer() {
-    const { data, error } = await window.supabase
+    // 1. Carica data End Timer
+    const { data: timerData } = await window.supabase
         .from('site_settings')
         .select('value')
         .eq('key', 'countdown_end')
         .single();
 
-    if (data && document.getElementById('timer-date-input')) {
-        // Formatta la data per l'input datetime-local
-        document.getElementById('timer-date-input').value = data.value;
+    if (timerData && document.getElementById('timer-date-input')) {
+        document.getElementById('timer-date-input').value = timerData.value;
+    }
+
+    // 2. Carica Testi Data Evento
+    const { data: heroData } = await window.supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'hero_dates')
+        .single();
+
+    if (heroData && heroData.value) {
+        try {
+            const parsed = JSON.parse(heroData.value);
+            if (document.getElementById('hero-date-days')) document.getElementById('hero-date-days').value = parsed.days || "23 &bull; 24";
+            if (document.getElementById('hero-date-month')) document.getElementById('hero-date-month').value = parsed.month || "MAY 2026";
+        } catch (e) { console.error("Errore parsing hero_dates", e); }
+    } else {
+        if (document.getElementById('hero-date-days')) document.getElementById('hero-date-days').value = "23 &bull; 24";
+        if (document.getElementById('hero-date-month')) document.getElementById('hero-date-month').value = "MAY 2026";
     }
 }
 
@@ -1553,6 +1571,35 @@ window.saveTimerDate = async () => {
     } catch (err) {
         console.error(err);
         alert("Errore durante il salvataggio: " + err.message);
+    } finally {
+        btn.innerHTML = oldHtml;
+        btn.disabled = false;
+    }
+};
+
+window.saveHeroDates = async () => {
+    const days = document.getElementById('hero-date-days').value;
+    const month = document.getElementById('hero-date-month').value;
+
+    if (!days || !month) return alert("Compila entrambi i campi.");
+
+    const btn = document.querySelector('button[onclick="saveHeroDates()"]');
+    const oldHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvataggio...';
+    btn.disabled = true;
+
+    const jsonValue = JSON.stringify({ days, month });
+
+    try {
+        const { error } = await window.supabase
+            .from('site_settings')
+            .upsert({ key: 'hero_dates', value: jsonValue }, { onConflict: 'key' });
+
+        if (error) throw error;
+        alert("Date salvate con successo! Visita la Home per vedere le modifiche.");
+    } catch (err) {
+        console.error(err);
+        alert("Errore di salvataggio: " + err.message);
     } finally {
         btn.innerHTML = oldHtml;
         btn.disabled = false;
