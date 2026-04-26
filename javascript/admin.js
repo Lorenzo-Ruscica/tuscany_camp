@@ -214,7 +214,7 @@ window.loadActiveShifts = async () => {
         .from('teacher_availability')
         .select('*, teachers(full_name)')
         .order('available_date', { ascending: true })
-        .limit(20);
+        .limit(2000);
 
     const list = document.getElementById('avail-list');
     if (list) {
@@ -223,7 +223,7 @@ window.loadActiveShifts = async () => {
             shifts.forEach(s => {
                 list.innerHTML += `
                     <div class="shift-card">
-                        <strong>${s.teachers.full_name}</strong><br>
+                        <strong>${s.teachers?.full_name || 'Insegnante non trovato'}</strong><br>
                         ${s.available_date}<br>${s.start_hour.slice(0, 5)} - ${s.end_hour.slice(0, 5)}
                         <button class="btn-delete-mini" onclick="deleteShift(${s.id})">&times;</button>
                     </div>`;
@@ -748,12 +748,27 @@ window.filterBalances = () => {
 
 // --- GESTIONE LEZIONI SPECIALI (Disponibilità) ---
 window.loadSpecialBookings = async () => {
-    const { data: specials } = await window.supabase
+    const { data: allBookings, error } = await window.supabase
         .from('bookings')
         .select('*, teachers(full_name)')
-        .in('lesson_type', ['lecture', 'group lesson'])
-        .neq('status', 'cancelled')
-        .order('lesson_date', { ascending: true });
+        .order('lesson_date', { ascending: true })
+        .limit(2000);
+
+    if (error) {
+        console.error("Supabase loadSpecialBookings error:", error);
+    }
+
+    let specials = [];
+    if (allBookings) {
+        specials = allBookings.filter(s => {
+            if (s.status === 'cancelled') return false;
+            
+            const ltype = (s.lesson_type || '').toLowerCase();
+            const notes = (s.admin_notes || '').toLowerCase();
+            
+            return ltype.includes('lecture') || ltype.includes('group') || notes.includes('admin');
+        });
+    }
 
     const list = document.getElementById('special-bookings-list');
     if (list) {
@@ -768,7 +783,7 @@ window.loadSpecialBookings = async () => {
             list.innerHTML += `
                <div class="shift-card" style="border-left:4px solid #00d2d3; display:flex; justify-content:space-between; align-items:center;">
                    <div>
-                       <strong>${s.teachers.full_name}</strong> <span style="font-size:0.8rem; color:#00d2d3; text-transform:uppercase;">${s.lesson_type}</span><br>
+                       <strong>${s.teachers?.full_name || 'Insegnante non trovato'}</strong> <span style="font-size:0.8rem; color:#00d2d3; text-transform:uppercase;">${s.lesson_type}</span><br>
                        <span style="color:#ccc"><i class="far fa-calendar"></i> ${s.lesson_date} <i class="far fa-clock" style="margin-left:5px;"></i> ${s.start_time.slice(0, 5)} - ${s.end_time.slice(0, 5)}</span><br>
                        <small style="color:#aaa">Paga Staff: <span style="color:#feca57">${payInfo}</span></small>
                    </div>
