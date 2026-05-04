@@ -189,8 +189,10 @@ window.addSpecialBooking = async () => {
     const { data: { session } } = await window.supabase.auth.getSession();
     if (!session) return alert("Sessione scaduta.");
 
+    // Per le prenotazioni speciali NON si usa user_id dell'admin,
+    // perché la FK fk_bookings_to_registrations richiede che il user_id
+    // esista nella tabella registrations (e l'admin non è registrato lì).
     const { error } = await window.supabase.from('bookings').insert({
-        user_id: session.user.id,
         teacher_id: teacherId,
         lesson_date: date,
         start_time: fullStartTime,
