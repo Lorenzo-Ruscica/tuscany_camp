@@ -329,8 +329,12 @@
                             <h2 id="total-reg-money" style="color:#f55394">€ 0</h2>
                         </div>
                     </div>
-                    <input type="text" id="search-reg" placeholder="Cerca..." onkeyup="filterRegistrations()"
-                        class="search-bar">
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 20px;">
+                        <input type="text" id="search-reg" placeholder="Cerca..." onkeyup="filterRegistrations()" class="search-bar" style="margin-bottom: 0; flex: 1;">
+                        <button onclick="downloadRegistrationsPDF()" style="background: linear-gradient(135deg, #00d2d3, #0984e3); color:white; border:none; padding:12px 20px; border-radius:5px; cursor:pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(0, 210, 211, 0.4); text-transform: uppercase; font-size: 0.9rem;">
+                            <i class="fas fa-file-pdf" style="margin-right: 5px;"></i> Scarica PDF Partecipanti
+                        </button>
+                    </div>
                     <div class="table-responsive">
                         <table class="admin-table">
                             <thead>

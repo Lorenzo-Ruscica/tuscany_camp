@@ -1082,6 +1082,119 @@ window.filterRegistrations = () => {
     });
 };
 
+window.downloadRegistrationsPDF = async () => {
+    if (typeof html2pdf === 'undefined') {
+        return alert("Libreria PDF non caricata.");
+    }
+
+    const { data: regs, error } = await window.supabase.from('registrations').select('*').order('created_at', { ascending: false });
+    if (error) {
+        return alert("Errore caricamento dati: " + error.message);
+    }
+
+    if (!regs || regs.length === 0) {
+        return alert("Nessun iscritto trovato.");
+    }
+
+    const term = (document.getElementById('search-reg')?.value || '').toLowerCase();
+    
+    const filteredRegs = regs.filter(r => {
+        if (!term) return true;
+        const searchString = `${r.full_name} ${r.user_email} ${r.role} ${r.package} ${r.payment_status}`.toLowerCase();
+        return searchString.includes(term);
+    });
+
+    if (filteredRegs.length === 0) {
+        return alert("Nessun iscritto trovato con questo filtro.");
+    }
+
+    const printDiv = document.createElement('div');
+    printDiv.style.padding = '30px';
+    printDiv.style.color = '#333';
+    printDiv.style.backgroundColor = '#fff';
+    printDiv.style.fontFamily = "'Outfit', 'Helvetica Neue', Arial, sans-serif";
+
+    const filterDisplay = term ? `Ricerca: "${term}"` : 'Tutti gli iscritti';
+
+    let html = `
+        <style>
+            .pdf-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
+            .pdf-table th, .pdf-table td { border: 1px solid #e0e0e0; padding: 10px; text-align: left; }
+            .pdf-table th { background-color: #00d2d3; color: white; font-weight: bold; text-transform: uppercase; font-size: 10px;}
+            .pdf-table tr { page-break-inside: avoid; }
+            .pdf-table tr:nth-child(even) { background-color: #fcfcfc; }
+            .pdf-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #0984e3; padding-bottom: 20px; }
+            .pdf-header h1 { color: #00d2d3; margin: 0; font-size: 26px; text-transform: uppercase; letter-spacing: 1px; }
+            .pdf-header h2 { color: #333; margin: 5px 0; font-size: 18px; }
+            .pdf-header p { color: #666; margin: 0; font-size: 12px; }
+            .pdf-footer { margin-top: 40px; font-size: 10px; color: #888; text-align: right; border-top: 1px solid #eee; padding-top: 10px; }
+        </style>
+        <div class="pdf-header">
+            <h1>Tuscany Camp</h1>
+            <h2>Lista Partecipanti (Entry Form)</h2>
+            <p>${filterDisplay}</p>
+        </div>
+        <table class="pdf-table">
+            <thead>
+                <tr>
+                    <th width="15%">Data</th>
+                    <th width="40%">Nome / Email</th>
+                    <th width="25%">Pacchetto</th>
+                    <th width="10%">Totale</th>
+                    <th width="10%">Stato</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    let totalMoney = 0;
+
+    filteredRegs.forEach(r => {
+        totalMoney += Number(r.total_amount) || 0;
+        const dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+        const paymentColor = r.payment_status === 'Saldato' ? 'color: #2ecc71;' : (r.payment_status === 'In attesa' ? 'color: #f1c40f;' : '');
+
+        html += `
+            <tr>
+                <td>${dateStr}</td>
+                <td><strong>${r.full_name}</strong><br><small style="color:#666;">${r.user_email}</small></td>
+                <td>${r.package}</td>
+                <td>€ ${r.total_amount}</td>
+                <td style="font-weight:bold; ${paymentColor}">${r.payment_status}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+
+        <div style="margin-top: 20px; text-align: right; padding: 15px; background: #f9f9f9; border-radius: 5px; border: 1px solid #eee;">
+            <h3 style="margin: 0; color: #333; font-size: 16px;">
+                Totale Iscritti: <span style="color: #00d2d3;">${filteredRegs.length}</span> | 
+                Incasso Totale: <span style="color: #00d2d3;">€ ${totalMoney}</span>
+            </h3>
+        </div>
+
+        <div class="pdf-footer">
+            Generato dal Sistema Admin Tuscany Camp il: ${new Date().toLocaleDateString('it-IT')} alle ${new Date().toLocaleTimeString('it-IT')}
+        </div>
+    `;
+
+    printDiv.innerHTML = html;
+
+    const opt = {
+        margin: [10, 10, 10, 10],
+        filename: 'Lista_Partecipanti.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(printDiv).save().catch(err => alert("Errore generazione PDF: " + err.message));
+};
+
 // --- GESTIONE TEACHERS LIST ---
 window.loadTeachersList = async () => {
     const { data: t } = await window.supabase.from('teachers').select('*').order('full_name');
