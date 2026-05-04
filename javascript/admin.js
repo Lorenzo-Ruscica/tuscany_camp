@@ -207,7 +207,7 @@ window.addSpecialBooking = async () => {
     if (error) alert("Errore DB: " + error.message);
     else {
         alert("Slot bloccato con successo!");
-        // loadAllBookings(); // Opzionale
+        loadSpecialBookings();
     }
 };
 
@@ -750,49 +750,44 @@ window.filterBalances = () => {
 
 // --- GESTIONE LEZIONI SPECIALI (Disponibilità) ---
 window.loadSpecialBookings = async () => {
-    const { data: allBookings, error } = await window.supabase
+    const list = document.getElementById('special-bookings-list');
+    if (!list) return;
+
+    // Query SOLO le prenotazioni speciali (quelle senza user_id)
+    const { data: specials, error } = await window.supabase
         .from('bookings')
         .select('*, teachers(full_name)')
-        .order('lesson_date', { ascending: true })
-        .limit(2000);
+        .is('user_id', null)
+        .neq('status', 'cancelled')
+        .order('lesson_date', { ascending: true });
 
     if (error) {
-        console.error("Supabase loadSpecialBookings error:", error);
+        console.error("loadSpecialBookings ERROR:", JSON.stringify(error));
+        list.innerHTML = `<p style="color:red;">Errore caricamento: ${error.message}</p>`;
+        return;
     }
 
-    let specials = [];
-    if (allBookings) {
-        specials = allBookings.filter(s => {
-            if (s.status === 'cancelled') return false;
-            
-            const ltype = (s.lesson_type || '').toLowerCase();
-            const notes = (s.admin_notes || '').toLowerCase();
-            
-            return ltype.includes('lecture') || ltype.includes('group') || notes.includes('admin');
-        });
+    console.log("loadSpecialBookings - specials found:", specials ? specials.length : 0);
+    if (specials) specials.forEach(s => console.log("  ->", s.id, s.lesson_type, s.lesson_date));
+
+    list.innerHTML = '';
+    if (!specials || specials.length === 0) {
+        list.innerHTML = '<p style="color:#666; font-style:italic;">Nessuna lezione speciale attiva.</p>';
+        return;
     }
 
-    const list = document.getElementById('special-bookings-list');
-    if (list) {
-        list.innerHTML = '';
-        if (!specials || specials.length === 0) {
-            list.innerHTML = '<p style="color:#666; font-style:italic;">Nessuna lezione speciale attiva.</p>';
-            return;
-        }
-
-        specials.forEach(s => {
-            const payInfo = s.staff_pay ? `€ ${s.staff_pay}` : 'Base';
-            list.innerHTML += `
-               <div class="shift-card" style="border-left:4px solid #00d2d3; display:flex; justify-content:space-between; align-items:center;">
-                   <div>
-                       <strong>${s.teachers?.full_name || 'Insegnante non trovato'}</strong> <span style="font-size:0.8rem; color:#00d2d3; text-transform:uppercase;">${s.lesson_type}</span><br>
-                       <span style="color:#ccc"><i class="far fa-calendar"></i> ${s.lesson_date} <i class="far fa-clock" style="margin-left:5px;"></i> ${s.start_time.slice(0, 5)} - ${s.end_time.slice(0, 5)}</span><br>
-                       <small style="color:#aaa">Paga Staff: <span style="color:#feca57">${payInfo}</span></small>
-                   </div>
-                   <button class="btn-delete-mini" onclick="deleteSpecialBooking(${s.id})">&times;</button>
-               </div>`;
-        });
-    }
+    specials.forEach(s => {
+        const payInfo = s.staff_pay ? `€ ${s.staff_pay}` : 'Base';
+        list.innerHTML += `
+           <div class="shift-card" style="border-left:4px solid #00d2d3; display:flex; justify-content:space-between; align-items:center;">
+               <div>
+                   <strong>${s.teachers?.full_name || 'Insegnante non trovato'}</strong> <span style="font-size:0.8rem; color:#00d2d3; text-transform:uppercase;">${s.lesson_type || 'special'}</span><br>
+                   <span style="color:#ccc"><i class="far fa-calendar"></i> ${s.lesson_date} <i class="far fa-clock" style="margin-left:5px;"></i> ${s.start_time.slice(0, 5)} - ${s.end_time.slice(0, 5)}</span><br>
+                   <small style="color:#aaa">Paga Staff: <span style="color:#feca57">${payInfo}</span></small>
+               </div>
+               <button class="btn-delete-mini" onclick="deleteSpecialBooking(${s.id})">&times;</button>
+           </div>`;
+    });
 };
 
 window.deleteSpecialBooking = async (id) => {
