@@ -6,6 +6,103 @@
 let teacherSelectAvail;
 let teacherSelectPrint;
 
+const ADMIN_PAGE_SIZE = 28;
+window.__lastStandardBookings = [];
+window.__balancesAllRows = [];
+
+window.adminPagerState = {
+    accounting: { page: 1 },
+    balances: { page: 1 },
+    messages: { page: 1 },
+    registrations: { page: 1 },
+    teachers: { page: 1 },
+    systemUsers: { page: 1 }
+};
+
+function renderPagerUI(containerId, stateKey, page, totalItems) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+    const pages = Math.max(1, Math.ceil(totalItems / ADMIN_PAGE_SIZE));
+    if (totalItems <= ADMIN_PAGE_SIZE) {
+        wrap.hidden = true;
+        wrap.innerHTML = '';
+        return;
+    }
+    wrap.hidden = false;
+    const start = (page - 1) * ADMIN_PAGE_SIZE + 1;
+    const end = Math.min(page * ADMIN_PAGE_SIZE, totalItems);
+    wrap.innerHTML = `
+        <span>Mostrando ${start}–${end} di ${totalItems}</span>
+        <div class="admin-pager__btns">
+            <button type="button" ${page <= 1 ? 'disabled' : ''} onclick="adminPagerGo('${stateKey}', ${page - 1})">Indietro</button>
+            <span>Pagina ${page} / ${pages}</span>
+            <button type="button" ${page >= pages ? 'disabled' : ''} onclick="adminPagerGo('${stateKey}', ${page + 1})">Avanti</button>
+        </div>
+    `;
+}
+
+window.adminPagerGo = (stateKey, newPage) => {
+    const st = window.adminPagerState[stateKey];
+    if (!st) return;
+
+    const totalFor = () => {
+        if (stateKey === 'accounting') return (window.__lastStandardBookings || []).length;
+        if (stateKey === 'balances') return window.__balancesFilteredCount || 0;
+        if (stateKey === 'messages') return (window.__messagesList || []).length;
+        if (stateKey === 'registrations') return (window.__registrationsList || []).length;
+        if (stateKey === 'teachers') return (window.__teachersList || []).length;
+        if (stateKey === 'systemUsers') return (window.__systemUsersList || []).length;
+        return 0;
+    };
+
+    const total = totalFor();
+    const pages = Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE));
+    st.page = Math.min(Math.max(1, newPage), pages);
+
+    if (stateKey === 'accounting') applyBookingFilter();
+    else if (stateKey === 'balances') renderBalancesTablePage();
+    else if (stateKey === 'messages') renderMessagesPage();
+    else if (stateKey === 'registrations') renderRegistrationsPage();
+    else if (stateKey === 'teachers') renderTeachersPage();
+    else if (stateKey === 'systemUsers') renderSystemUsersPage();
+};
+
+function initAdminMobileMenu() {
+    const mobileBtn = document.getElementById('mobile-toggle-btn');
+    const closeBtn = document.getElementById('close-sidebar-btn');
+    const sidebar = document.getElementById('adminSidebar');
+    const body = document.body;
+    if (!sidebar) return;
+
+    if (mobileBtn) {
+        mobileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sidebar.classList.add('sidebar-open');
+            body.classList.add('menu-active');
+        });
+    }
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            sidebar.classList.remove('sidebar-open');
+            body.classList.remove('menu-active');
+        });
+    }
+    document.addEventListener('click', (e) => {
+        if (!body.classList.contains('menu-active')) return;
+        if (sidebar.contains(e.target) || e.target === mobileBtn) return;
+        sidebar.classList.remove('sidebar-open');
+        body.classList.remove('menu-active');
+    });
+    document.querySelectorAll('.nav-btn').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 768) {
+                sidebar.classList.remove('sidebar-open');
+                body.classList.remove('menu-active');
+            }
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
 
     // --- A. CONTROLLO SICUREZZA (WHITELIST) ---
@@ -37,8 +134,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     teacherSelectPrint = document.getElementById('print-teacher');
 
     // --- C. CARICAMENTO DATI INIZIALI ---
+    initAdminMobileMenu();
     loadTeachers();
     loadActiveShifts();
+    loadCurrentTimer();
 });
 
 // ============================================================
@@ -47,24 +146,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // --- GESTIONE TAB ---
 // --- GESTIONE TAB CLASSICHE (Dashboard) ---
-window.showTab = (tabId) => {
-    // A. Gestione Sezioni Principali
+window.showTab = (tabId, el) => {
     const dashboardSection = document.getElementById('section-dashboard');
 
     if (dashboardSection) dashboardSection.style.display = 'block';
 
-    // B. Gestione Bottoni Menu Laterale
-    // Rimuove 'active' da TUTTI i bottoni
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
 
-    // Aggiunge 'active' al bottone cliccato
-    // (Usa event.currentTarget perché l'onclick è inline nell'HTML)
-    if (event && event.currentTarget) {
-        event.currentTarget.classList.add('active');
+    if (el && el.classList) {
+        el.classList.add('active');
+    } else {
+        const navBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+        if (navBtn) navBtn.classList.add('active');
     }
 
-    // C. Gestione Contenuto Tab
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     const tab = document.getElementById('tab-' + tabId);
     if (tab) tab.classList.add('active');
 
@@ -315,10 +411,12 @@ window.loadAllBookings = async () => {
         .limit(5000); // Elevato per recuperare tutto il necessario
 
     currentBookings = bookings || [];
+    window.adminPagerState.accounting.page = 1;
     applyBookingFilter();
 };
 
 window.searchBookings = () => {
+    window.adminPagerState.accounting.page = 1;
     applyBookingFilter();
 };
 
@@ -345,13 +443,16 @@ function getFilteredBookings() {
 function applyBookingFilter() {
     const filtered = getFilteredBookings();
 
-    // Filtra: Contabilità mostra solo lezioni private (Standard)
     const standardBookings = filtered.filter(b => !b.lesson_type || b.lesson_type === 'private');
+    window.__lastStandardBookings = standardBookings;
 
-    // Render
+    const st = window.adminPagerState.accounting;
+    const pages = Math.max(1, Math.ceil(standardBookings.length / ADMIN_PAGE_SIZE));
+    if (st.page > pages) st.page = pages;
+
     renderAccountingTable(standardBookings);
-    updateTeacherHours(filtered); // Conta tutte le lezioni (anche speciali) nel numero totale
-    updateStaffPay(filtered); // La paga staff considera tutto
+    updateTeacherHours(filtered);
+    updateStaffPay(filtered);
 }
 
 window.downloadAccountingPDF = () => {
@@ -482,13 +583,35 @@ window.downloadAccountingPDF = () => {
 // ==========================================
 window.__unpaidIdsData = {};
 
+function renderBalancesTablePage() {
+    const tbody = document.getElementById('balances-body');
+    if (!tbody || !window.__balancesAllRows) return;
+
+    const term = (document.getElementById('search-balance')?.value || '').toLowerCase();
+    const filtered = window.__balancesAllRows.filter(r => r.nameLower.includes(term));
+    window.__balancesFilteredCount = filtered.length;
+
+    const st = window.adminPagerState.balances;
+    const pages = Math.max(1, Math.ceil(filtered.length / ADMIN_PAGE_SIZE));
+    if (st.page > pages) st.page = pages;
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Nessun risultato.</td></tr>';
+        renderPagerUI('balances-pager', 'balances', st.page, 0);
+        return;
+    }
+
+    const slice = filtered.slice((st.page - 1) * ADMIN_PAGE_SIZE, st.page * ADMIN_PAGE_SIZE);
+    tbody.innerHTML = slice.map(r => r.htmlRow).join('');
+    renderPagerUI('balances-pager', 'balances', st.page, filtered.length);
+}
+
 window.loadBalances = async () => {
     const tbody = document.getElementById('balances-body');
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Caricamento...</td></tr>';
 
     try {
-        // 1. Carica lezioni già saldate da site_settings
         const { data: settings } = await window.supabase
             .from('site_settings')
             .select('value')
@@ -501,7 +624,6 @@ window.loadBalances = async () => {
             if (!Array.isArray(paidBookings)) paidBookings = [];
         }
 
-        // 2. Carica tutte le prenotazioni
         const { data: bookings, error } = await window.supabase
             .from('bookings')
             .select('*, registrations(full_name)')
@@ -510,12 +632,10 @@ window.loadBalances = async () => {
 
         if (error) throw error;
 
-        // 3. Elabora dati utente
         const usersData = {};
         window.__unpaidIdsData = {};
 
         bookings.forEach(b => {
-            // Ignoriamo lessons non standard / group lecture senza utente ecc.
             if (b.lesson_type && b.lesson_type !== 'private') return;
 
             const uid = b.user_id;
@@ -540,46 +660,55 @@ window.loadBalances = async () => {
             }
         });
 
-        // 4. Mostra nella tabella
-        tbody.innerHTML = '';
+        window.__balancesAllRows = [];
         let hasData = false;
 
         for (const uid in usersData) {
             const d = usersData[uid];
-            // Nascondiamo chi non ha mai prenotato!
             if (d.paidCount === 0 && d.unpaidCount === 0) continue;
             hasData = true;
 
             const statusHtml = d.unpaidCount > 0
-                ? `<span style="color:#f55394; font-weight:bold;"><i class="fas fa-exclamation-triangle"></i> Da Saldare</span>`
-                : `<span style="color:#00d2d3; font-weight:bold;"><i class="fas fa-check-circle"></i> Tutto Saldato</span>`;
+                ? `<span style="color:#f55394; font-weight:bold;"><i class="fas fa-exclamation-triangle"></i> Da saldare</span>`
+                : `<span style="color:#00d2d3; font-weight:bold;"><i class="fas fa-check-circle"></i> Tutto saldato</span>`;
 
             let actionsHtml = d.unpaidCount > 0
-                ? `<button onclick="markAsPaid('${uid}')" style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(56, 239, 125, 0.3); font-size: 0.9rem; margin-right: 5px; transition: transform 0.2s;"><i class="fas fa-check"></i> Segna Saldato (€${d.totalOwed})</button>`
+                ? `<button type="button" class="btn-add btn-add--sm" onclick="markAsPaid('${uid}')"><i class="fas fa-check"></i> Segna saldato (€${d.totalOwed})</button>`
                 : `<span style="color:#aaa; font-style:italic;">Nessuna azione</span>`;
 
-            // Opzione Extra: Annulla pagamenti utente (per sicurezza)
             if (d.paidCount > 0) {
-                actionsHtml += `<button onclick="revertAllUserPayments('${uid}')" class="btn btn-outline" style="border-color:#ff9f43; color:#ff9f43; padding:5px 10px; font-size:0.8rem; margin-top:5px; border-radius: 5px; cursor: pointer; background: transparent;"><i class="fas fa-undo"></i> Resetta</button>`;
+                actionsHtml += `<button type="button" class="btn-cancel btn-add--sm" style="margin-top:6px;" onclick="revertAllUserPayments('${uid}')"><i class="fas fa-undo"></i> Resetta</button>`;
             }
 
-            // Manteniamo i dati per usarli
             window.__unpaidIdsData[uid] = d.unpaidIds;
 
-            tbody.innerHTML += `
+            const htmlRow = `
                 <tr data-name="${d.name.toLowerCase()}" data-owed="${d.totalOwed}" data-unpaid-count="${d.unpaidCount}" data-uid="${uid}">
                     <td><strong>${d.name}</strong></td>
-                    <td><b style="color:var(--color-hot-pink);">${d.unpaidCount}</b> <span style="font-size:0.8rem; color:#aaa;">(Pagate in passato: ${d.paidCount})</span></td>
-                    <td style="font-weight:bold; color:var(--color-hot-pink); font-size:1.1rem;">€ ${d.totalOwed}</td>
+                    <td><b style="color:var(--color-hot-pink);">${d.unpaidCount}</b> <span style="font-size:0.8rem; color:#aaa;">(Pagate: ${d.paidCount})</span></td>
+                    <td style="font-weight:bold; color:var(--color-hot-pink);">€ ${d.totalOwed}</td>
                     <td>${statusHtml}</td>
                     <td><div style="display: flex; flex-direction: column; gap: 5px; align-items: flex-start;">${actionsHtml}</div></td>
-                </tr>
-            `;
+                </tr>`;
+
+            window.__balancesAllRows.push({
+                nameLower: d.name.toLowerCase(),
+                htmlRow,
+                name: d.name,
+                unpaidCount: d.unpaidCount,
+                totalOwed: d.totalOwed
+            });
         }
 
         if (!hasData) {
+            window.__balancesAllRows = [];
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Nessuna lezione privata trovata.</td></tr>';
+            renderPagerUI('balances-pager', 'balances', 1, 0);
+            return;
         }
+
+        window.adminPagerState.balances.page = 1;
+        renderBalancesTablePage();
     } catch (err) {
         console.error(err);
         tbody.innerHTML = '<tr><td colspan="5" style="color:red; text-align:center;">Errore caricamento dati: ' + err.message + '</td></tr>';
@@ -591,23 +720,14 @@ window.downloadBalancesPDF = () => {
         return alert("Libreria PDF non caricata.");
     }
 
-    // Raccogli solo le righe che sono correntemente visibili dalla tabella
-    const rows = document.querySelectorAll('#balances-body tr');
-    let validData = [];
-
-    rows.forEach(row => {
-        if (row.style.display !== 'none' && row.getAttribute('data-name')) {
-            const owed = parseFloat(row.getAttribute('data-owed')) || 0;
-            // Mostriamo nel PDF solo chi ha debiti in sospeso
-            if (owed > 0) {
-                validData.push({
-                    name: row.querySelector('td strong').innerText,
-                    unpaidCount: row.getAttribute('data-unpaid-count') || "0",
-                    amountStr: `€ ${owed}`
-                });
-            }
-        }
-    });
+    const term = (document.getElementById('search-balance')?.value || '').toLowerCase();
+    const validData = (window.__balancesAllRows || [])
+        .filter(r => r.nameLower.includes(term) && r.totalOwed > 0)
+        .map(r => ({
+            name: r.name,
+            unpaidCount: String(r.unpaidCount),
+            amountStr: `€ ${r.totalOwed}`
+        }));
 
     if (validData.length === 0) {
         return alert("Nessun utente con pagamenti in sospeso da esportare (controlla i filtri).");
@@ -741,11 +861,8 @@ window.revertAllUserPayments = async (uid) => {
 };
 
 window.filterBalances = () => {
-    const input = document.getElementById('search-balance').value.toLowerCase();
-    document.querySelectorAll('#balances-body tr').forEach(row => {
-        const name = row.getAttribute('data-name') || '';
-        row.style.display = name.includes(input) ? '' : 'none';
-    });
+    window.adminPagerState.balances.page = 1;
+    renderBalancesTablePage();
 };
 
 // --- GESTIONE LEZIONI SPECIALI (Disponibilità) ---
@@ -779,13 +896,14 @@ window.loadSpecialBookings = async () => {
     specials.forEach(s => {
         const payInfo = s.staff_pay ? `€ ${s.staff_pay}` : 'Base';
         list.innerHTML += `
-           <div class="shift-card" style="border-left:4px solid #00d2d3; display:flex; justify-content:space-between; align-items:center;">
+           <div class="shift-card shift-card--special">
                <div>
-                   <strong>${s.teachers?.full_name || 'Insegnante non trovato'}</strong> <span style="font-size:0.8rem; color:#00d2d3; text-transform:uppercase;">${s.lesson_type || 'special'}</span><br>
-                   <span style="color:#ccc"><i class="far fa-calendar"></i> ${s.lesson_date} <i class="far fa-clock" style="margin-left:5px;"></i> ${s.start_time.slice(0, 5)} - ${s.end_time.slice(0, 5)}</span><br>
-                   <small style="color:#aaa">Paga Staff: <span style="color:#feca57">${payInfo}</span></small>
+                   <strong>${s.teachers?.full_name || 'Insegnante non trovato'}</strong>
+                   <span style="font-size:0.75rem; color:var(--admin-cyan); text-transform:uppercase;">${s.lesson_type || 'special'}</span><br>
+                   <span style="color:#ccc"><i class="far fa-calendar"></i> ${s.lesson_date} <i class="far fa-clock" style="margin-left:5px;"></i> ${s.start_time.slice(0, 5)}–${s.end_time.slice(0, 5)}</span><br>
+                   <small style="color:#aaa">Paga staff: <span style="color:#feca57">${payInfo}</span></small>
                </div>
-               <button class="btn-delete-mini" onclick="deleteSpecialBooking(${s.id})">&times;</button>
+               <button type="button" class="btn-delete-mini" onclick="deleteSpecialBooking(${s.id})" aria-label="Elimina">&times;</button>
            </div>`;
     });
 };
@@ -805,28 +923,33 @@ function renderAccountingTable(bookings) {
     tbody.innerHTML = '';
     if (!bookings || bookings.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#aaa;">Nessuna lezione trovata.</td></tr>';
+        renderPagerUI('accounting-pager', 'accounting', 1, 0);
         return;
     }
 
-    bookings.forEach(b => {
+    const st = window.adminPagerState.accounting;
+    const pageSlice = bookings.slice((st.page - 1) * ADMIN_PAGE_SIZE, st.page * ADMIN_PAGE_SIZE);
+
+    pageSlice.forEach(b => {
         const rowClass = b.status === 'cancelled' ? 'style="opacity:0.5; text-decoration:line-through"' : '';
         const coupleName = b.registrations?.full_name || "N/A";
+        const tn = b.teachers?.full_name || '—';
 
         const btnEdit = b.status !== 'cancelled' ? `
-            <button onclick="openEditModal(${b.id}, '${b.lesson_date}', '${b.start_time}', '${b.end_time}', ${b.lesson_price})"
-                    style="color:#ff9f43; background:none; border:none; cursor:pointer; margin-right:5px;" title="Modifica">
+            <button type="button" class="admin-action-btn" onclick="openEditModal(${b.id}, '${b.lesson_date}', '${b.start_time}', '${b.end_time}', ${b.lesson_price})"
+                    title="Modifica">
                 <i class="fas fa-edit"></i>
             </button>` : '';
 
         const btnCancel = b.status !== 'cancelled' ? `
-            <button onclick="cancelBookingAdmin(${b.id})"
-                    style="color:#f55394; background:none; border:none; cursor:pointer; margin-right:5px;" title="Annulla">
+            <button type="button" class="admin-action-btn" onclick="cancelBookingAdmin(${b.id})"
+                    title="Annulla">
                 <i class="fas fa-ban"></i>
             </button>` : '<span style="font-size:0.8rem">(Annullato)</span>';
 
         const btnDelete = `
-            <button onclick="deleteBookingPermanent(${b.id})"
-                    style="color:red; background:none; border:none; cursor:pointer;" title="ELIMINA DEL TUTTO">
+            <button type="button" class="admin-action-btn" onclick="deleteBookingPermanent(${b.id})"
+                    title="Elimina definitivamente">
                 <i class="fas fa-trash"></i>
             </button>`;
 
@@ -834,13 +957,15 @@ function renderAccountingTable(bookings) {
             <tr ${rowClass}>
                 <td>${b.id}</td>
                 <td>${b.lesson_date}<br>${b.start_time.slice(0, 5)}</td>
-                <td>${b.teachers.full_name}</td>
+                <td>${tn}</td>
                 <td>${coupleName}</td>
                 <td>€ ${b.lesson_price}</td>
                 <td>${b.status}</td>
                 <td>${btnEdit} ${btnCancel} ${btnDelete}</td>
             </tr>`;
     });
+
+    renderPagerUI('accounting-pager', 'accounting', st.page, bookings.length);
 }
 
 // LOGICA MODALE MODIFICA (CON INVIO EMAIL)
@@ -947,26 +1072,45 @@ window.deleteBookingPermanent = async (id) => {
 };
 
 // --- ALTRE TAB (Messaggi) ---
-window.loadMessages = async () => {
-    const { data: msgs } = await window.supabase.from('contacts').select('*').order('created_at', { ascending: false });
+function renderMessagesPage() {
     const tbody = document.getElementById('messages-body');
+    const msgs = window.__messagesList || [];
+    const st = window.adminPagerState.messages;
     tbody.innerHTML = '';
-    if (msgs) {
-        msgs.forEach(m => {
-            const style = m.is_read ? '' : 'font-weight:bold; color:#fff; background:rgba(245, 83, 148, 0.1);';
-            const subject = m.subject || '(No Oggetto)';
-            tbody.innerHTML += `
+
+    if (!msgs.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Nessun messaggio.</td></tr>';
+        renderPagerUI('messages-pager', 'messages', 1, 0);
+        return;
+    }
+
+    const pages = Math.max(1, Math.ceil(msgs.length / ADMIN_PAGE_SIZE));
+    if (st.page > pages) st.page = pages;
+    const slice = msgs.slice((st.page - 1) * ADMIN_PAGE_SIZE, st.page * ADMIN_PAGE_SIZE);
+
+    slice.forEach(m => {
+        const style = m.is_read ? '' : 'font-weight:bold; color:#fff; background:rgba(245, 83, 148, 0.1);';
+        const subject = m.subject || '(No oggetto)';
+        tbody.innerHTML += `
                 <tr style="${style}">
                     <td>${new Date(m.created_at).toLocaleDateString()}</td>
                     <td>${m.full_name}<br><small>${m.email}</small></td>
                     <td><strong>${subject}</strong><br>${m.message}</td>
                     <td>
-                        <button onclick="deleteMessage(${m.id})" style="color:red; background:none; border:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
-                        ${!m.is_read ? `<button onclick="markAsRead(${m.id})" style="color:#0f0; background:none; border:none; cursor:pointer;"><i class="fas fa-check"></i></button>` : ''}
+                        <button type="button" class="admin-action-btn" onclick="deleteMessage(${m.id})"><i class="fas fa-trash"></i></button>
+                        ${!m.is_read ? `<button type="button" class="admin-action-btn" onclick="markAsRead(${m.id})"><i class="fas fa-check"></i></button>` : ''}
                     </td>
                 </tr>`;
-        });
-    }
+    });
+
+    renderPagerUI('messages-pager', 'messages', st.page, msgs.length);
+}
+
+window.loadMessages = async () => {
+    const { data: msgs } = await window.supabase.from('contacts').select('*').order('created_at', { ascending: false });
+    window.__messagesList = msgs || [];
+    window.adminPagerState.messages.page = 1;
+    renderMessagesPage();
 };
 
 window.markAsRead = async (id) => {
@@ -983,48 +1127,72 @@ window.deleteMessage = async (id) => {
 // ==========================================
 // SEZIONE: GESTIONE ISCRIZIONI (REGISTRATIONS)
 // ==========================================
-window.loadRegistrations = async () => {
-    const { data: regs } = await window.supabase.from('registrations').select('*').order('created_at', { ascending: false });
+function renderRegistrationsPage() {
     const tbody = document.getElementById('registrations-body');
+    const all = window.__registrationsList || [];
+    const term = (document.getElementById('search-reg')?.value || '').toLowerCase();
+    const filtered = !term
+        ? all
+        : all.filter(r =>
+            `${r.full_name} ${r.user_email} ${r.role} ${r.package} ${r.payment_status}`.toLowerCase().includes(term)
+        );
+
+    const st = window.adminPagerState.registrations;
     tbody.innerHTML = '';
-    let totalMoney = 0, count = 0;
 
-    if (regs) {
-        regs.forEach(r => {
-            count++;
-            totalMoney += Number(r.total_amount) || 0;
+    if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Nessun risultato.</td></tr>';
+        renderPagerUI('registrations-pager', 'registrations', 1, 0);
+        return;
+    }
 
-            // Generazione Riga con Bottone DELETE
-            // Cerca questo pezzo dentro loadRegistrations e AGGIORNALO così:
-            tbody.innerHTML += `
+    const pages = Math.max(1, Math.ceil(filtered.length / ADMIN_PAGE_SIZE));
+    if (st.page > pages) st.page = pages;
+    const slice = filtered.slice((st.page - 1) * ADMIN_PAGE_SIZE, st.page * ADMIN_PAGE_SIZE);
+
+    slice.forEach(r => {
+        tbody.innerHTML += `
     <tr>
         <td>${new Date(r.created_at).toLocaleDateString()}</td>
         <td><strong>${r.full_name}</strong><br><small>${r.user_email}</small></td>
         <td>${r.role}</td>
         <td>${r.package}</td>
         <td>€ ${r.total_amount}</td>
-        <td><span style="color:#0f0">${r.payment_status}</span></td>
+        <td><span style="color:#2ecc71">${r.payment_status}</span></td>
         <td style="text-align: right; white-space: nowrap;">
-            <button onclick="viewRegistrationDetails('${r.id}')"
-                    style="color:#00d2d3; background:none; border:none; cursor:pointer; margin-right: 10px;"
-                    title="Vedi Dettagli Completi">
+            <button type="button" class="admin-action-btn" onclick="viewRegistrationDetails('${r.id}')"
+                    title="Dettagli">
                 <i class="fas fa-eye"></i>
             </button>
-
-            <button onclick="deleteEntry('${r.id}')"
-                    style="color:red; background:none; border:none; cursor:pointer;"
-                    title="Elimina Iscrizione">
+            <button type="button" class="admin-action-btn" onclick="deleteEntry('${r.id}')"
+                    title="Elimina">
                 <i class="fas fa-trash"></i>
             </button>
         </td>
     </tr>`;
-        });
-    }
+    });
+
+    renderPagerUI('registrations-pager', 'registrations', st.page, filtered.length);
+}
+
+window.loadRegistrations = async () => {
+    const { data: regs } = await window.supabase.from('registrations').select('*').order('created_at', { ascending: false });
+    window.__registrationsList = regs || [];
+
+    let totalMoney = 0;
+    let count = 0;
+    window.__registrationsList.forEach(r => {
+        count++;
+        totalMoney += Number(r.total_amount) || 0;
+    });
 
     const countEl = document.getElementById('total-reg-count');
     const moneyEl = document.getElementById('total-reg-money');
     if (countEl) countEl.innerText = count;
     if (moneyEl) moneyEl.innerText = "€ " + totalMoney;
+
+    window.adminPagerState.registrations.page = 1;
+    renderRegistrationsPage();
 };
 
 // ==========================================
@@ -1076,10 +1244,8 @@ window.deleteEntry = async (id) => {
 };
 
 window.filterRegistrations = () => {
-    const input = document.getElementById('search-reg').value.toLowerCase();
-    document.querySelectorAll('#registrations-body tr').forEach(row => {
-        row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
-    });
+    window.adminPagerState.registrations.page = 1;
+    renderRegistrationsPage();
 };
 
 window.downloadRegistrationsPDF = async () => {
@@ -1196,39 +1362,55 @@ window.downloadRegistrationsPDF = async () => {
 };
 
 // --- GESTIONE TEACHERS LIST ---
-window.loadTeachersList = async () => {
-    const { data: t } = await window.supabase.from('teachers').select('*').order('full_name');
+function renderTeachersPage() {
     const tbody = document.getElementById('teachers-list-body');
+    const teachers = window.__teachersList || [];
+    const st = window.adminPagerState.teachers;
     tbody.innerHTML = '';
 
-    if (t) {
-        t.forEach(teacher => {
-            const emailDisplay = teacher.email ? `<br><small style="color:#aaa">${teacher.email}</small>` : '';
+    if (!teachers.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Nessun insegnante.</td></tr>';
+        renderPagerUI('teachers-pager', 'teachers', 1, 0);
+        return;
+    }
 
-            // Escaping per sicurezza nelle stringhe
-            const safeName = teacher.full_name.replace(/'/g, "\\'");
-            const safeDisc = (teacher.discipline || '').replace(/'/g, "\\'");
-            const safeEmail = (teacher.email || '').replace(/'/g, "\\'");
+    const pages = Math.max(1, Math.ceil(teachers.length / ADMIN_PAGE_SIZE));
+    if (st.page > pages) st.page = pages;
+    const slice = teachers.slice((st.page - 1) * ADMIN_PAGE_SIZE, st.page * ADMIN_PAGE_SIZE);
 
-            tbody.innerHTML += `
+    slice.forEach(teacher => {
+        const emailDisplay = teacher.email ? `<br><small style="color:#aaa">${teacher.email}</small>` : '';
+        const safeName = teacher.full_name.replace(/'/g, "\\'");
+        const safeDisc = (teacher.discipline || '').replace(/'/g, "\\'");
+        const safeEmail = (teacher.email || '').replace(/'/g, "\\'");
+
+        tbody.innerHTML += `
             <tr>
                 <td><strong>${teacher.full_name}</strong>${emailDisplay}</td>
                 <td>€ ${teacher.base_price}</td>
                 <td style="color:#2ecc71">€ ${teacher.pay_rate || 0}</td>
                 <td>${teacher.discipline || '-'}</td>
                 <td>
-                    <button onclick="openEditTeacherModal('${teacher.id}', '${safeName}', '${safeEmail}', ${teacher.base_price}, '${safeDisc}', ${teacher.pay_rate || 0})"
-                        style="color:#3498db; background:none; border:none; cursor:pointer; font-size:1.1rem; margin-right:10px;" title="Modifica">
+                    <button type="button" class="admin-action-btn" onclick="openEditTeacherModal('${teacher.id}', '${safeName}', '${safeEmail}', ${teacher.base_price}, '${safeDisc}', ${teacher.pay_rate || 0})"
+                        title="Modifica">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="deleteTeacher('${teacher.id}')"
-                        style="color:#e74c3c; background:none; border:none; cursor:pointer; font-size:1.1rem;" title="Elimina">
+                    <button type="button" class="admin-action-btn" onclick="deleteTeacher('${teacher.id}')"
+                        title="Elimina">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
             </tr>`;
-        });
-    }
+    });
+
+    renderPagerUI('teachers-pager', 'teachers', st.page, teachers.length);
+}
+
+window.loadTeachersList = async () => {
+    const { data: t } = await window.supabase.from('teachers').select('*').order('full_name');
+    window.__teachersList = t || [];
+    window.adminPagerState.teachers.page = 1;
+    renderTeachersPage();
 };
 
 // ... (addNewTeacher rimane uguale) ...
@@ -1276,8 +1458,8 @@ window.openEditTeacherModal = (id, name, email, price, discipline, payRate) => {
                     <input type="text" id="edit-teacher-disc" style="width:100%; padding:8px; margin-bottom:20px; background:#333; border:1px solid #555; color:white;">
                 </div>
                 <div style="text-align:right; display:flex; justify-content:flex-end; gap:10px;">
-                    <button onclick="document.getElementById('teacher-edit-modal').style.display='none'" class="btn-cancel" style="padding:8px 15px; background:#444; color:white; border:none; cursor:pointer;">Annulla</button>
-                    <button onclick="saveTeacherChanges()" class="btn-save" style="padding:8px 15px; background:var(--color-hot-pink); color:white; border:none; cursor:pointer;">Salva</button>
+                    <button type="button" onclick="document.getElementById('teacher-edit-modal').style.display='none'" class="btn-cancel">Annulla</button>
+                    <button type="button" onclick="saveTeacherChanges()" class="btn-save">Salva</button>
                 </div>
             </div>
         `;
@@ -1399,52 +1581,75 @@ window.deleteTeacher = async (id) => {
 // ==========================================
 // SEZIONE: GESTIONE ACCOUNT DI SISTEMA
 // ==========================================
-window.loadSystemUsers = async () => {
+function renderSystemUsersPage() {
     const tbody = document.getElementById('system-users-body');
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Caricamento utenti...</td></tr>';
+    const allUsers = window.__systemUsersList || [];
+    const registeredSet = window.__registeredUserIdSet || new Set();
+    const st = window.adminPagerState.systemUsers;
+    tbody.innerHTML = '';
 
-    const { data: allUsers, error: errAuth } = await window.supabase.rpc('get_system_users');
-    const { data: regIds, error: errReg } = await window.supabase.from('registrations').select('user_id');
-
-    if (errAuth || errReg) {
-        tbody.innerHTML = '<tr><td colspan="5" style="color:red; text-align:center">Errore caricamento. Hai eseguito lo script SQL?</td></tr>';
+    if (!allUsers.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Nessun utente.</td></tr>';
+        renderPagerUI('system-users-pager', 'systemUsers', 1, 0);
         return;
     }
 
-    const registeredSet = new Set(regIds.map(r => r.user_id));
+    const pages = Math.max(1, Math.ceil(allUsers.length / ADMIN_PAGE_SIZE));
+    if (st.page > pages) st.page = pages;
+    const slice = allUsers.slice((st.page - 1) * ADMIN_PAGE_SIZE, st.page * ADMIN_PAGE_SIZE);
 
-    tbody.innerHTML = '';
-    let ghosts = 0;
-
-    allUsers.forEach(u => {
+    slice.forEach(u => {
         const hasForm = registeredSet.has(u.id);
-        if (!hasForm) ghosts++;
-
         const created = new Date(u.created_at).toLocaleDateString('it-IT');
         const lastSign = u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('it-IT') : 'Mai';
 
         const statusBadge = hasForm
-            ? '<span style="color:#2ecc71; font-weight:bold;">✔ Completo</span>'
-            : '<span style="color:#ff9f43; font-weight:bold;">⚠ MANCANTE</span>';
+            ? '<span style="color:#2ecc71; font-weight:bold;">Completo</span>'
+            : '<span style="color:#ff9f43; font-weight:bold;">Form mancante</span>';
 
         tbody.innerHTML += `
             <tr>
                 <td>${created}</td>
-                <td><strong>${u.email}</strong><br><small style="opacity:0.5">ID: ${u.id.slice(0, 6)}...</small></td>
+                <td><strong>${u.email}</strong><br><small style="opacity:0.5">ID: ${u.id.slice(0, 6)}…</small></td>
                 <td>${lastSign}</td>
                 <td>${statusBadge}</td>
                 <td>
-                    <button onclick="deleteSystemUser('${u.id}')"
-                            style="color:red; background:none; border:none; cursor:pointer;"
-                            title="Elimina Account Definitivamente">
+                    <button type="button" class="btn-cancel btn-add--sm" onclick="deleteSystemUser('${u.id}')"
+                            title="Elimina account">
                         <i class="fas fa-trash"></i> Elimina
                     </button>
                 </td>
             </tr>`;
     });
 
-    document.getElementById('sys-total-count').innerText = allUsers.length;
+    renderPagerUI('system-users-pager', 'systemUsers', st.page, allUsers.length);
+}
+
+window.loadSystemUsers = async () => {
+    const tbody = document.getElementById('system-users-body');
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Caricamento utenti…</td></tr>';
+
+    const { data: allUsers, error: errAuth } = await window.supabase.rpc('get_system_users');
+    const { data: regIds, error: errReg } = await window.supabase.from('registrations').select('user_id');
+
+    if (errAuth || errReg) {
+        tbody.innerHTML = '<tr><td colspan="5" style="color:red; text-align:center">Errore caricamento. Script SQL eseguito?</td></tr>';
+        return;
+    }
+
+    window.__registeredUserIdSet = new Set(regIds.map(r => r.user_id));
+    window.__systemUsersList = allUsers || [];
+
+    let ghosts = 0;
+    window.__systemUsersList.forEach(u => {
+        if (!window.__registeredUserIdSet.has(u.id)) ghosts++;
+    });
+
+    document.getElementById('sys-total-count').innerText = window.__systemUsersList.length;
     document.getElementById('sys-ghost-count').innerText = ghosts;
+
+    window.adminPagerState.systemUsers.page = 1;
+    renderSystemUsersPage();
 };
 
 window.deleteSystemUser = async (uuid) => {
@@ -1485,14 +1690,12 @@ async function sendEmailNotification(type, bookingData, userEmail, userName) {
 // ==========================================
 
 window.viewRegistrationDetails = async (id) => {
-    // 1. Apri il modale e mostra caricamento
     const modal = document.getElementById('reg-details-modal');
     const content = document.getElementById('reg-details-content');
     modal.style.display = 'flex';
-    content.innerHTML = '<p style="text-align:center;">Caricamento dati...</p>';
+    content.innerHTML = '<p class="admin-muted-msg">Caricamento dati...</p>';
 
     try {
-        // 2. Prendi TUTTI i dati da Supabase per quell'ID
         const { data: r, error } = await window.supabase
             .from('registrations')
             .select('*')
@@ -1501,73 +1704,109 @@ window.viewRegistrationDetails = async (id) => {
 
         if (error) throw error;
 
-        // 3. DETERMINA IL TIPO (Logica)
-        let typeBadge = '';
-        let hasMan = r.man_name && r.man_name.trim() !== '';
-        let hasWoman = r.woman_name && r.woman_name.trim() !== '';
+        const hasMan = Boolean(r.man_name && r.man_name.trim());
+        const hasWoman = Boolean(r.woman_name && r.woman_name.trim());
 
+        let typeLabel = 'Unknown';
+        let typeIcon = 'fa-question-circle';
         if (hasMan && hasWoman) {
-            typeBadge = `<div style="background:#6c5ce7; color:white; padding:8px 15px; border-radius:20px; display:inline-block; font-weight:bold; margin-bottom:15px;">
-                            <i class="fas fa-user-friends"></i> COUPLE (x2)
-                         </div>`;
-        } else if (hasMan && !hasWoman) {
-            typeBadge = `<div style="background:#0984e3; color:white; padding:8px 15px; border-radius:20px; display:inline-block; font-weight:bold; margin-bottom:15px;">
-                            <i class="fas fa-male"></i> SINGLE MALE
-                         </div>`;
-        } else if (!hasMan && hasWoman) {
-            typeBadge = `<div style="background:#e84393; color:white; padding:8px 15px; border-radius:20px; display:inline-block; font-weight:bold; margin-bottom:15px;">
-                            <i class="fas fa-female"></i> SINGLE FEMALE
-                         </div>`;
-        } else {
-            typeBadge = `<div style="background:#555; color:white; padding:8px 15px; border-radius:20px; display:inline-block; font-weight:bold; margin-bottom:15px;">
-                            <i class="fas fa-question"></i> UNKNOWN
-                         </div>`;
+            typeLabel = 'Couple (x2)';
+            typeIcon = 'fa-user-friends';
+        } else if (hasMan) {
+            typeLabel = 'Single male';
+            typeIcon = 'fa-male';
+        } else if (hasWoman) {
+            typeLabel = 'Single female';
+            typeIcon = 'fa-female';
         }
 
-        // 4. Genera l'HTML
+        const paymentMethod = r.payment_status === 'paid' ? 'Stripe (card)' : 'Pending';
+
         content.innerHTML = `
-            <div style="text-align:center;">
-                ${typeBadge}
-            </div>
+            <div class="reg-type-badge"><i class="fas ${typeIcon}"></i> ${typeLabel}</div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 0.9rem;">
-                
-                <div style="grid-column: 1 / -1; margin-bottom: 5px;">
-                    <strong style="color:white; display:block; border-bottom:1px solid #444; padding-bottom:5px;">1. PARTECIPANTI</strong>
-                </div>
-                
-                <div style="${hasMan ? '' : 'opacity:0.3'}"><span style="color:#888;">Man:</span> <br> <strong>${r.man_name || '-'} ${r.man_surname || '-'}</strong></div>
-                <div style="${hasWoman ? '' : 'opacity:0.3'}"><span style="color:#888;">Woman:</span> <br> <strong>${r.woman_name || '-'} ${r.woman_surname || '-'}</strong></div>
-                
-                <div><span style="color:#888;">Teacher:</span> <br> ${r.teacher || '-'}</div>
-                <div><span style="color:#888;">Country:</span> <br> ${r.country || '-'}</div>
-                <div><span style="color:#888;">Age Group:</span> <br> ${r.age_group || '-'}</div>
+            <div class="reg-grid">
+                <section class="reg-block" style="grid-column: 1 / -1;">
+                    <h4>Partecipanti</h4>
+                    <div class="reg-kv">
+                        <div class="reg-kv__item ${hasMan ? '' : 'is-muted'}">
+                            <span>Man</span>
+                            <strong>${r.man_name || '-'} ${r.man_surname || ''}</strong>
+                        </div>
+                        <div class="reg-kv__item ${hasWoman ? '' : 'is-muted'}">
+                            <span>Woman</span>
+                            <strong>${r.woman_name || '-'} ${r.woman_surname || ''}</strong>
+                        </div>
+                        <div class="reg-kv__item">
+                            <span>Teacher</span>
+                            <p>${r.teacher || '-'}</p>
+                        </div>
+                        <div class="reg-kv__item">
+                            <span>Country</span>
+                            <p>${r.country || '-'}</p>
+                        </div>
+                        <div class="reg-kv__item">
+                            <span>Age group</span>
+                            <p>${r.age_group || '-'}</p>
+                        </div>
+                    </div>
+                </section>
 
-                <div style="grid-column: 1 / -1; margin: 10px 0;">
-                    <strong style="color:white; display:block; border-bottom:1px solid #444; padding-bottom:5px;">2. CONTATTI</strong>
-                </div>
-                <div><span style="color:#888;">Email:</span> <br> ${r.user_email || '-'}</div>
-                <div><span style="color:#888;">Phone:</span> <br> ${r.phone || '-'}</div>
+                <section class="reg-block">
+                    <h4>Contatti</h4>
+                    <div class="reg-kv">
+                        <div class="reg-kv__item">
+                            <span>Email</span>
+                            <strong>${r.user_email || '-'}</strong>
+                        </div>
+                        <div class="reg-kv__item">
+                            <span>Phone</span>
+                            <p>${r.phone || '-'}</p>
+                        </div>
+                    </div>
+                </section>
 
-                <div style="grid-column: 1 / -1; margin: 10px 0;">
-                    <strong style="color:white; display:block; border-bottom:1px solid #444; padding-bottom:5px;">3. PACCHETTO & COSTI</strong>
-                </div>
-                <div><span style="color:#888;">Package:</span> <br> <span style="color:var(--color-hot-pink); font-weight:bold;">${r.package}</span></div>
-                <div><span style="color:#888;">Extra Nights:</span> <br> ${r.extra_nights || '0'}</div>
-                <div><span style="color:#888;">Total Paid:</span> <br> € ${r.total_amount}</div>
-                <div><span style="color:#888;">Method:</span> <br> ${r.payment_status === 'paid' ? 'Stripe (Card)' : 'Pending'}</div>
+                <section class="reg-block">
+                    <h4>Pacchetto e costi</h4>
+                    <div class="reg-kv">
+                        <div class="reg-kv__item">
+                            <span>Package</span>
+                            <strong>${r.package || '-'}</strong>
+                        </div>
+                        <div class="reg-kv__item">
+                            <span>Extra nights</span>
+                            <p>${r.extra_nights || '0'}</p>
+                        </div>
+                        <div class="reg-kv__item">
+                            <span>Total paid</span>
+                            <strong>€ ${r.total_amount || 0}</strong>
+                        </div>
+                        <div class="reg-kv__item">
+                            <span>Payment method</span>
+                            <p>${paymentMethod}</p>
+                        </div>
+                    </div>
+                </section>
 
-                <div style="grid-column: 1 / -1; margin: 10px 0;">
-                    <strong style="color:white; display:block; border-bottom:1px solid #444; padding-bottom:5px;">4. LOGISTICA</strong>
-                </div>
-                <div><span style="color:#888;">Arrival:</span> <br> ${r.arrival_date || 'N/A'} <small>(${r.arrival_time || '--:--'})</small></div>
-                <div><span style="color:#888;">Departure:</span> <br> ${r.departure_date || 'N/A'} <small>(${r.departure_time || '--:--'})</small></div>
+                <section class="reg-block" style="grid-column: 1 / -1;">
+                    <h4>Logistica</h4>
+                    <div class="reg-kv">
+                        <div class="reg-kv__item">
+                            <span>Arrival</span>
+                            <p>${r.arrival_date || 'N/A'} (${r.arrival_time || '--:--'})</p>
+                        </div>
+                        <div class="reg-kv__item">
+                            <span>Departure</span>
+                            <p>${r.departure_date || 'N/A'} (${r.departure_time || '--:--'})</p>
+                        </div>
+                    </div>
+                </section>
             </div>
         `;
 
     } catch (err) {
         console.error(err);
-        content.innerHTML = `<p style="color:red;">Errore nel caricamento dati: ${err.message}</p>`;
+        content.innerHTML = `<p style="color:#ff9fae;">Errore nel caricamento dati: ${err.message}</p>`;
     }
 };
 
@@ -1575,71 +1814,9 @@ window.closeRegModal = () => {
     document.getElementById('reg-details-modal').style.display = 'none';
 };
 
-// Chiudi se clicchi fuori
 window.addEventListener('click', (e) => {
     const modal = document.getElementById('reg-details-modal');
     if (e.target === modal) modal.style.display = 'none';
-    // ==========================================
-    // FUNZIONI MOBILE MENU
-    // ==========================================
-    document.addEventListener('DOMContentLoaded', () => {
-        const mobileBtn = document.getElementById('mobile-toggle-btn');
-        const closeBtn = document.getElementById('close-sidebar-btn');
-        const sidebar = document.getElementById('adminSidebar');
-        const body = document.body;
-
-        // Funzione Apri
-        if (mobileBtn) {
-            mobileBtn.addEventListener('click', () => {
-                sidebar.classList.add('sidebar-open');
-                body.classList.add('menu-active');
-            });
-        }
-
-        // Funzione Chiudi (Click su X)
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                sidebar.classList.remove('sidebar-open');
-                body.classList.remove('menu-active');
-            });
-        }
-
-        // Funzione Chiudi (Click fuori / overlay)
-        document.addEventListener('click', (e) => {
-            if (body.classList.contains('menu-active') &&
-                !sidebar.contains(e.target) &&
-                e.target !== mobileBtn) {
-
-                sidebar.classList.remove('sidebar-open');
-                body.classList.remove('menu-active');
-            }
-        });
-
-        // Chiudi menu quando clicchi un link
-        const navLinks = document.querySelectorAll('.nav-btn');
-        navLinks.forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth < 768) {
-                    sidebar.classList.remove('sidebar-open');
-                    body.classList.remove('menu-active');
-                }
-            });
-        });
-    });
-    // ==========================================
-    // GESTIONE NAVIGAZIONE SCHEDE (Tabs)
-    // ==========================================
-
-
-
-    // ... (Lascia qui sotto il codice del Timer saveTimerSettings e loadTimerDate che ti ho dato prima)
-});
-// --- GESTIONE TIMER ---
-
-// 1. Carica la data attuale all'avvio
-document.addEventListener('DOMContentLoaded', async () => {
-    // ... (altre funzioni di init se ci sono) ...
-    loadCurrentTimer();
 });
 
 async function loadCurrentTimer() {
@@ -1757,27 +1934,17 @@ function updateTeacherHours(bookings) {
     });
 
     if (Object.keys(teacherStats).length === 0) {
-        container.innerHTML = '<span style="color:#aaa">Nessuna lezione confermata.</span>';
+        container.innerHTML = '<p class="admin-muted-msg">Nessuna lezione confermata.</p>';
         return;
     }
 
-    // Crea le "Card"
     for (const [name, count] of Object.entries(teacherStats)) {
         const badge = document.createElement('div');
-        badge.style.cssText = `
-            background: #333; 
-            padding: 10px 15px; 
-            border-radius: 6px; 
-            border: 1px solid #444; 
-            min-width: 140px;
-            text-align: center;
-        `;
-
+        badge.className = 'admin-stat-chip';
         badge.innerHTML = `
-            <div style="font-size: 0.8rem; color: #aaa; text-transform: uppercase; margin-bottom: 5px;">${name}</div>
-            <div style="font-size: 1.3rem; font-weight: bold; color: var(--color-hot-pink);">${count} Lezioni</div>
+            <div class="admin-stat-chip__label">${name}</div>
+            <div class="admin-stat-chip__value">${count} lezioni</div>
         `;
-
         container.appendChild(badge);
     }
 }
@@ -1834,23 +2001,16 @@ function updateStaffPay(bookings) {
     });
 
     if (Object.keys(staffStats).length === 0) {
-        container.innerHTML = '<span style="color:#aaa">Nessuna paga staff calcolata (imposta "Paga Staff").</span>';
+        container.innerHTML = '<p class="admin-muted-msg">Nessuna paga staff calcolata (imposta «Paga staff» sugli insegnanti).</p>';
         return;
     }
 
     for (const [name, totalPay] of Object.entries(staffStats)) {
         const badge = document.createElement('div');
-        badge.style.cssText = `
-            background: #333; 
-            padding: 10px 15px; 
-            border-radius: 6px; 
-            border: 1px solid #444; 
-            min-width: 140px;
-            text-align: center;
-        `;
+        badge.className = 'admin-stat-chip admin-stat-chip--pay';
         badge.innerHTML = `
-            <div style="font-size: 0.8rem; color: #aaa; text-transform: uppercase; margin-bottom: 5px;">${name}</div>
-            <div style="font-size: 1.3rem; font-weight: bold; color: #feca57;">€ ${totalPay}</div>
+            <div class="admin-stat-chip__label">${name}</div>
+            <div class="admin-stat-chip__value">€ ${totalPay}</div>
         `;
         container.appendChild(badge);
     }
@@ -2282,7 +2442,7 @@ window.updateNewsletterList = () => {
             manualList.innerHTML = manualUnique.map(email => `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding: 3px 0; border-bottom: 1px solid #333; color:#feca57;">
                     <span>${email}</span>
-                    <button onclick="removeManualEmail('${email}')" style="background:none; border:none; color:#ff6b6b; cursor:pointer; font-size:1.1rem; padding: 0 5px;" title="Rimuovi">
+                    <button type="button" class="admin-action-btn" onclick="removeManualEmail('${email}')" title="Rimuovi">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>`).join('');
