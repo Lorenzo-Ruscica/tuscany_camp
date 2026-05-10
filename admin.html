@@ -98,7 +98,7 @@
                 <div id="tab-availability" class="tab-content active">
                     <header class="admin-page-head">
                         <h1 class="admin-page-title">Orari e disponibilità</h1>
-                        <p class="admin-page-desc">Definisci i turni degli insegnanti e gestisci le lezioni speciali (lecture / group) in un’unica vista compatta.</p>
+                        <p class="admin-page-desc">Definisci i turni degli insegnanti e gestisci le lezioni speciali (lecture / group / break) in un’unica vista compatta.</p>
                     </header>
                     <div class="card">
                         <h2 class="admin-section-title">Nuovo turno</h2>
@@ -126,7 +126,7 @@
                     <div id="avail-list" class="list-container shift-grid"></div>
                     <div class="card admin-card--accent">
                         <h2 class="admin-section-title">Prenotazione speciale (admin)</h2>
-                        <p class="admin-page-desc" style="margin-bottom:1rem;">Lecture o Group Lesson: occupa lo slot solo se rientra nei turni già impostati.</p>
+                        <p class="admin-page-desc" style="margin-bottom:1rem;">Lecture, Group Lesson o Break: occupa lo slot solo se rientra nei turni già impostati.</p>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Insegnante</label>
@@ -149,6 +149,7 @@
                                 <select id="special-type">
                                     <option value="Lecture">Lecture</option>
                                     <option value="Group Lesson">Group Lesson</option>
+                                    <option value="Break">Break</option>
                                 </select>
                             </div>
                             <div class="form-group">

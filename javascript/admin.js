@@ -1151,6 +1151,17 @@ function renderRegistrationsPage() {
     const slice = filtered.slice((st.page - 1) * ADMIN_PAGE_SIZE, st.page * ADMIN_PAGE_SIZE);
 
     slice.forEach(r => {
+        const isPaid = window.__paidRegistrations && window.__paidRegistrations.includes(r.id) || r.payment_status === 'paid' || r.payment_status === 'Saldato';
+
+        let paymentStatusHtml = '';
+        if (isPaid) {
+            paymentStatusHtml = `<span style="color:#00d2d3; font-weight:bold;"><i class="fas fa-check-circle"></i> Tutto saldato</span>
+                                 <br><button type="button" class="btn-cancel btn-add--sm" style="margin-top:6px;" onclick="revertRegistrationPayment('${r.id}')"><i class="fas fa-undo"></i> Resetta</button>`;
+        } else {
+            paymentStatusHtml = `<span style="color:#f55394; font-weight:bold;"><i class="fas fa-exclamation-triangle"></i> Da saldare</span>
+                                 <br><button type="button" class="btn-add btn-add--sm" style="margin-top: 5px;" onclick="markRegistrationPaid('${r.id}')"><i class="fas fa-check"></i> Segna saldato (€${r.total_amount})</button>`;
+        }
+
         tbody.innerHTML += `
     <tr>
         <td>${new Date(r.created_at).toLocaleDateString()}</td>
@@ -1158,7 +1169,7 @@ function renderRegistrationsPage() {
         <td>${r.role}</td>
         <td>${r.package}</td>
         <td>€ ${r.total_amount}</td>
-        <td><span style="color:#2ecc71">${r.payment_status}</span></td>
+        <td>${paymentStatusHtml}</td>
         <td style="text-align: right; white-space: nowrap;">
             <button type="button" class="admin-action-btn" onclick="viewRegistrationDetails('${r.id}')"
                     title="Dettagli">
@@ -1179,6 +1190,14 @@ window.loadRegistrations = async () => {
     const { data: regs } = await window.supabase.from('registrations').select('*').order('created_at', { ascending: false });
     window.__registrationsList = regs || [];
 
+    const { data: settings } = await window.supabase.from('site_settings').select('value').eq('key', 'paid_registrations').maybeSingle();
+    let paidRegs = [];
+    if (settings && settings.value) {
+        paidRegs = JSON.parse(settings.value);
+        if (!Array.isArray(paidRegs)) paidRegs = [];
+    }
+    window.__paidRegistrations = paidRegs;
+
     let totalMoney = 0;
     let count = 0;
     window.__registrationsList.forEach(r => {
@@ -1193,6 +1212,40 @@ window.loadRegistrations = async () => {
 
     window.adminPagerState.registrations.page = 1;
     renderRegistrationsPage();
+};
+
+window.markRegistrationPaid = async (id) => {
+    if (!confirm("Confermi di voler segnare questa iscrizione come saldata?")) return;
+
+    let currentPaid = window.__paidRegistrations || [];
+    if (!currentPaid.includes(id)) {
+        currentPaid.push(id);
+    }
+
+    const { error } = await window.supabase.from('site_settings').upsert({ key: 'paid_registrations', value: JSON.stringify(currentPaid) }, { onConflict: 'key' });
+
+    if (error) {
+        alert("Errore salvataggio: " + error.message);
+    } else {
+        alert("Iscrizione segnata come saldata!");
+        loadRegistrations();
+    }
+};
+
+window.revertRegistrationPayment = async (id) => {
+    if (!confirm("ATTENZIONE! Vuoi annullare il pagamento registrato per questa iscrizione? Verrà segnata di nuovo come 'Da Saldare'.")) return;
+
+    let currentPaid = window.__paidRegistrations || [];
+    currentPaid = currentPaid.filter(paidId => paidId !== id);
+
+    const { error } = await window.supabase.from('site_settings').upsert({ key: 'paid_registrations', value: JSON.stringify(currentPaid) }, { onConflict: 'key' });
+
+    if (error) {
+        alert("Errore salvataggio: " + error.message);
+    } else {
+        alert("Pagamento annullato con successo.");
+        loadRegistrations();
+    }
 };
 
 // ==========================================
