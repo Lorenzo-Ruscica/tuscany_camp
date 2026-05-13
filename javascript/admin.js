@@ -1351,7 +1351,7 @@ window.downloadRegistrationsPDF = async () => {
     }
 
     const term = (document.getElementById('search-reg')?.value || '').toLowerCase();
-    
+
     const filteredRegs = regs.filter(r => {
         if (!term) return true;
         const searchString = `${r.full_name} ${r.user_email} ${r.role} ${r.package} ${r.payment_status}`.toLowerCase();
