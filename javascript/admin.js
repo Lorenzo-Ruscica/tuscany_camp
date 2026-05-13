@@ -1222,14 +1222,32 @@ window.markRegistrationPaid = async (id) => {
         currentPaid.push(id);
     }
 
-    const { error } = await window.supabase.from('site_settings').upsert({ key: 'paid_registrations', value: JSON.stringify(currentPaid) }, { onConflict: 'key' });
+    // 1. Salva in site_settings (lista ausiliaria)
+    const { error: settingsError } = await window.supabase
+        .from('site_settings')
+        .upsert({ key: 'paid_registrations', value: JSON.stringify(currentPaid) }, { onConflict: 'key' });
 
-    if (error) {
-        alert("Errore salvataggio: " + error.message);
-    } else {
-        alert("Iscrizione segnata come saldata!");
-        loadRegistrations();
+    if (settingsError) {
+        alert("Errore salvataggio: " + settingsError.message);
+        return;
     }
+
+    // 2. Aggiorna anche il campo payment_status nella tabella registrations
+    const { error: regError } = await window.supabase
+        .from('registrations')
+        .update({ payment_status: 'paid' })
+        .eq('id', id);
+
+    if (regError) {
+        console.warn("Attenzione: impossibile aggiornare payment_status:", regError.message);
+        // Non blocchiamo: il dato in site_settings è già salvato
+    }
+
+    // 3. Aggiorna la variabile in memoria
+    window.__paidRegistrations = currentPaid;
+
+    alert("Iscrizione segnata come saldata!");
+    loadRegistrations();
 };
 
 window.revertRegistrationPayment = async (id) => {
@@ -1238,14 +1256,31 @@ window.revertRegistrationPayment = async (id) => {
     let currentPaid = window.__paidRegistrations || [];
     currentPaid = currentPaid.filter(paidId => paidId !== id);
 
-    const { error } = await window.supabase.from('site_settings').upsert({ key: 'paid_registrations', value: JSON.stringify(currentPaid) }, { onConflict: 'key' });
+    // 1. Aggiorna site_settings
+    const { error: settingsError } = await window.supabase
+        .from('site_settings')
+        .upsert({ key: 'paid_registrations', value: JSON.stringify(currentPaid) }, { onConflict: 'key' });
 
-    if (error) {
-        alert("Errore salvataggio: " + error.message);
-    } else {
-        alert("Pagamento annullato con successo.");
-        loadRegistrations();
+    if (settingsError) {
+        alert("Errore salvataggio: " + settingsError.message);
+        return;
     }
+
+    // 2. Reimposta payment_status nella tabella registrations
+    const { error: regError } = await window.supabase
+        .from('registrations')
+        .update({ payment_status: 'In attesa' })
+        .eq('id', id);
+
+    if (regError) {
+        console.warn("Attenzione: impossibile aggiornare payment_status:", regError.message);
+    }
+
+    // 3. Aggiorna variabile in memoria
+    window.__paidRegistrations = currentPaid;
+
+    alert("Pagamento annullato con successo.");
+    loadRegistrations();
 };
 
 // ==========================================
