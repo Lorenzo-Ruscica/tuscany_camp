@@ -192,6 +192,9 @@ window.loadTeachers = async () => {
     const { data: teachers } = await window.supabase.from('teachers').select('*').order('full_name');
     if (!teachers) return;
 
+    // Salva lista globale per uso in updateTeacherHours / updateStaffPay
+    window.__allTeachers = teachers;
+
     let html = '<option value="">Seleziona...</option>';
     teachers.forEach(t => {
         html += `<option value="${t.id}">${t.full_name}</option>`;
@@ -606,6 +609,8 @@ function renderBalancesTablePage() {
     renderPagerUI('balances-pager', 'balances', st.page, filtered.length);
 }
 
+window.__allUserBookings = {}; // uid -> array di booking completi
+
 window.loadBalances = async () => {
     const tbody = document.getElementById('balances-body');
     if (!tbody) return;
@@ -626,14 +631,15 @@ window.loadBalances = async () => {
 
         const { data: bookings, error } = await window.supabase
             .from('bookings')
-            .select('*, registrations(full_name)')
+            .select('*, registrations(full_name), teachers(full_name)')
             .neq('status', 'cancelled')
-            .order('created_at', { ascending: false });
+            .order('lesson_date', { ascending: true });
 
         if (error) throw error;
 
         const usersData = {};
         window.__unpaidIdsData = {};
+        window.__allUserBookings = {};
 
         bookings.forEach(b => {
             if (b.lesson_type && b.lesson_type !== 'private') return;
@@ -649,6 +655,10 @@ window.loadBalances = async () => {
             if (!usersData[uid]) {
                 usersData[uid] = { name: name, unpaidIds: [], paidCount: 0, unpaidCount: 0, totalOwed: 0 };
             }
+            if (!window.__allUserBookings[uid]) {
+                window.__allUserBookings[uid] = [];
+            }
+            window.__allUserBookings[uid].push({ ...b, _isPaid: paidBookings.includes(b.id) });
 
             const isPaid = paidBookings.includes(b.id);
             if (isPaid) {
@@ -672,12 +682,17 @@ window.loadBalances = async () => {
                 ? `<span style="color:#f55394; font-weight:bold;"><i class="fas fa-exclamation-triangle"></i> Da saldare</span>`
                 : `<span style="color:#00d2d3; font-weight:bold;"><i class="fas fa-check-circle"></i> Tutto saldato</span>`;
 
-            let actionsHtml = d.unpaidCount > 0
-                ? `<button type="button" class="btn-add btn-add--sm" onclick="markAsPaid('${uid}')"><i class="fas fa-check"></i> Segna saldato (€${d.totalOwed})</button>`
-                : `<span style="color:#aaa; font-style:italic;">Nessuna azione</span>`;
+            const nameEncoded = encodeURIComponent(d.name);
+            let actionsHtml = `<button type="button" class="btn-add btn-add--sm" style="background:var(--admin-cyan); color:#000;" onclick="openUserLessons('${uid}', decodeURIComponent('${nameEncoded}'))"><i class="fas fa-list-ul"></i> Vedi lezioni</button>`;
+
+            if (d.unpaidCount > 0) {
+                actionsHtml += `<button type="button" class="btn-add btn-add--sm" onclick="markAsPaid('${uid}')"><i class="fas fa-check"></i> Segna saldato (€${d.totalOwed})</button>`;
+            } else {
+                actionsHtml += `<span style="color:#aaa; font-style:italic; font-size:0.8rem;">Tutto saldato</span>`;
+            }
 
             if (d.paidCount > 0) {
-                actionsHtml += `<button type="button" class="btn-cancel btn-add--sm" style="margin-top:6px;" onclick="revertAllUserPayments('${uid}')"><i class="fas fa-undo"></i> Resetta</button>`;
+                actionsHtml += `<button type="button" class="btn-cancel btn-add--sm" style="margin-top:2px;" onclick="revertAllUserPayments('${uid}')"><i class="fas fa-undo"></i> Resetta</button>`;
             }
 
             window.__unpaidIdsData[uid] = d.unpaidIds;
@@ -713,6 +728,139 @@ window.loadBalances = async () => {
         console.error(err);
         tbody.innerHTML = '<tr><td colspan="5" style="color:red; text-align:center;">Errore caricamento dati: ' + err.message + '</td></tr>';
     }
+};
+
+// ============================================================
+// MODAL: LEZIONI UTENTE (con modifica prezzo)
+// ============================================================
+window.openUserLessons = (uid, userName) => {
+    const modal = document.getElementById('user-lessons-modal');
+    const title = document.getElementById('user-lessons-modal-title');
+    const body = document.getElementById('user-lessons-modal-body');
+    if (!modal) return;
+
+    title.innerHTML = `<i class="fas fa-list-ul" style="margin-right:0.5rem;"></i>Lezioni di <span style="color:#fff;">${userName}</span>`;
+    body.innerHTML = '<p class="admin-muted-msg"><i class="fas fa-spinner fa-spin"></i> Caricamento…</p>';
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    const lessons = (window.__allUserBookings[uid] || []);
+
+    if (lessons.length === 0) {
+        body.innerHTML = '<p class="admin-muted-msg">Nessuna lezione trovata per questo utente.</p>';
+        return;
+    }
+
+    let html = `
+        <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+            <thead>
+                <tr style="border-bottom:2px solid rgba(255,255,255,0.12);">
+                    <th style="text-align:left; padding:8px 10px; color:#aaa; font-weight:600;">Data</th>
+                    <th style="text-align:left; padding:8px 10px; color:#aaa; font-weight:600;">Ora</th>
+                    <th style="text-align:left; padding:8px 10px; color:#aaa; font-weight:600;">Insegnante</th>
+                    <th style="text-align:left; padding:8px 10px; color:#aaa; font-weight:600;">Stato</th>
+                    <th style="text-align:right; padding:8px 10px; color:#aaa; font-weight:600;">Prezzo (€)</th>
+                    <th style="padding:8px 10px;"></th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    lessons.forEach(b => {
+        const dateStr = b.lesson_date ? b.lesson_date.split('-').reverse().join('/') : '—';
+        const timeStr = b.start_time ? b.start_time.slice(0, 5) : '—';
+        const endStr = b.end_time ? b.end_time.slice(0, 5) : '';
+        const teacherName = b.teachers?.full_name || '—';
+        const price = parseFloat(b.lesson_price) ?? 0;
+        const paidBadge = b._isPaid
+            ? `<span style="color:#00d2d3; font-size:0.78rem; font-weight:700;"><i class="fas fa-check-circle"></i> Pagata</span>`
+            : `<span style="color:#f55394; font-size:0.78rem; font-weight:700;"><i class="fas fa-clock"></i> In sospeso</span>`;
+        const rowBg = b._isPaid ? 'rgba(0,210,211,0.04)' : '';
+
+        html += `
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.06); background:${rowBg};">
+                <td style="padding:10px 10px;"><strong>${dateStr}</strong></td>
+                <td style="padding:10px 10px; color:#ccc;">${timeStr}${endStr ? '–' + endStr : ''}</td>
+                <td style="padding:10px 10px; color:#ccc;">${teacherName}</td>
+                <td style="padding:10px 10px;">${paidBadge}</td>
+                <td style="padding:10px 10px; text-align:right;">
+                    <input
+                        type="number"
+                        id="price-input-${b.id}"
+                        value="${price}"
+                        min="0"
+                        step="1"
+                        style="width:80px; padding:4px 8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.18); border-radius:6px; color:#fff; font-size:0.9rem; text-align:right;"
+                    >
+                </td>
+                <td style="padding:10px 10px;">
+                    <button
+                        type="button"
+                        onclick="saveLessonPrice(${b.id}, '${uid}')"
+                        style="background:var(--color-hot-pink); color:#fff; border:none; border-radius:6px; padding:5px 12px; cursor:pointer; font-size:0.8rem; white-space:nowrap;"
+                        id="save-btn-${b.id}"
+                    ><i class="fas fa-save"></i> Salva</button>
+                </td>
+            </tr>`;
+    });
+
+    html += '</tbody></table>';
+    body.innerHTML = html;
+};
+
+window.saveLessonPrice = async (bookingId, uid) => {
+    const input = document.getElementById(`price-input-${bookingId}`);
+    const btn = document.getElementById(`save-btn-${bookingId}`);
+    if (!input) return;
+
+    const newPrice = parseFloat(input.value);
+    if (isNaN(newPrice) || newPrice < 0) {
+        input.style.borderColor = '#f55394';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    input.style.borderColor = '';
+
+    const { error } = await window.supabase
+        .from('bookings')
+        .update({ lesson_price: newPrice })
+        .eq('id', bookingId);
+
+    if (error) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Salva';
+        input.style.borderColor = '#f55394';
+        alert('Errore salvataggio: ' + error.message);
+        return;
+    }
+
+    // Aggiorna il dato locale
+    if (window.__allUserBookings[uid]) {
+        const bk = window.__allUserBookings[uid].find(b => b.id === bookingId);
+        if (bk) bk.lesson_price = newPrice;
+    }
+
+    btn.innerHTML = '<i class="fas fa-check"></i> Ok';
+    btn.style.background = '#00d2d3';
+    btn.style.color = '#000';
+    setTimeout(() => {
+        btn.innerHTML = '<i class="fas fa-save"></i> Salva';
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.disabled = false;
+    }, 1800);
+
+    // Ricarica la tabella pagamenti in background per aggiornare i totali
+    loadBalances();
+};
+
+window.closeUserLessonsModal = (event) => {
+    // Se chiamata con evento, chiudi solo se il click è sull'overlay stesso
+    if (event && event.currentTarget && event.target !== event.currentTarget) return;
+    const modal = document.getElementById('user-lessons-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
 };
 
 window.downloadBalancesPDF = () => {
@@ -936,7 +1084,7 @@ function renderAccountingTable(bookings) {
         const tn = b.teachers?.full_name || '—';
 
         const btnEdit = b.status !== 'cancelled' ? `
-            <button type="button" class="admin-action-btn" onclick="openEditModal(${b.id}, '${b.lesson_date}', '${b.start_time}', '${b.end_time}', ${b.lesson_price})"
+            <button type="button" class="admin-action-btn" onclick="openEditModal(${b.id}, '${b.lesson_date}', '${b.start_time}', '${b.end_time}', ${b.lesson_price}, ${b.teacher_id || 'null'})"
                     title="Modifica">
                 <i class="fas fa-edit"></i>
             </button>` : '';
@@ -969,12 +1117,19 @@ function renderAccountingTable(bookings) {
 }
 
 // LOGICA MODALE MODIFICA (CON INVIO EMAIL)
-window.openEditModal = (id, date, start, end, price) => {
+window.openEditModal = (id, date, start, end, price, teacherId) => {
     document.getElementById('edit-booking-id').value = id;
     document.getElementById('edit-date').value = date;
     document.getElementById('edit-start').value = start.slice(0, 5);
     document.getElementById('edit-end').value = end.slice(0, 5);
     document.getElementById('edit-price').value = price;
+
+    // Popola il select insegnanti
+    const sel = document.getElementById('edit-teacher');
+    const teachers = window.__allTeachers || [];
+    sel.innerHTML = teachers.map(t =>
+        `<option value="${t.id}" ${t.id === teacherId ? 'selected' : ''}>${t.full_name}</option>`
+    ).join('');
 
     document.getElementById('admin-edit-modal').style.display = 'flex';
 };
@@ -990,18 +1145,23 @@ window.saveBookingChanges = async () => {
     const newEnd = document.getElementById('edit-end').value;
     const newPrice = document.getElementById('edit-price').value;
 
+    const newTeacherId = document.getElementById('edit-teacher').value;
+
     if (!newDate || !newStart || !newPrice) return alert("Compila tutto");
 
     const formattedStart = newStart.length === 5 ? newStart + ":00" : newStart;
     const formattedEnd = newEnd.length === 5 ? newEnd + ":00" : newEnd;
 
     // 1. UPDATE SU SUPABASE
+    const updatePayload = {
+        lesson_date: newDate, start_time: formattedStart, end_time: formattedEnd,
+        lesson_price: newPrice, admin_notes: "Modified by Admin"
+    };
+    if (newTeacherId) updatePayload.teacher_id = newTeacherId;
+
     const { error } = await window.supabase
         .from('bookings')
-        .update({
-            lesson_date: newDate, start_time: formattedStart, end_time: formattedEnd,
-            lesson_price: newPrice, admin_notes: "Modified by Admin"
-        })
+        .update(updatePayload)
         .eq('id', id);
 
     if (error) {
@@ -1168,9 +1328,13 @@ function renderRegistrationsPage() {
         <td><strong>${r.full_name}</strong><br><small>${r.user_email}</small></td>
         <td>${r.role}</td>
         <td>${r.package}</td>
-        <td>€ ${r.total_amount}</td>
+        <td id="reg-amount-display-${r.id}">€ ${r.total_amount}</td>
         <td>${paymentStatusHtml}</td>
         <td style="text-align: right; white-space: nowrap;">
+            <button type="button" class="admin-action-btn" onclick="openEditRegAmount('${r.id}', ${r.total_amount}, '${(r.full_name || '').replace(/'/g, "\\'")}')"
+                    title="Modifica importo" style="color:var(--admin-cyan);">
+                <i class="fas fa-euro-sign"></i>
+            </button>
             <button type="button" class="admin-action-btn" onclick="viewRegistrationDetails('${r.id}')"
                     title="Dettagli">
                 <i class="fas fa-eye"></i>
@@ -1212,6 +1376,72 @@ window.loadRegistrations = async () => {
 
     window.adminPagerState.registrations.page = 1;
     renderRegistrationsPage();
+};
+
+// ============================================================
+// MODAL: MODIFICA IMPORTO ISCRIZIONE
+// ============================================================
+window.openEditRegAmount = (id, currentAmount, name) => {
+    const modal = document.getElementById('reg-amount-modal');
+    if (!modal) return;
+    document.getElementById('reg-amount-modal-title').textContent = name;
+    const inp = document.getElementById('reg-amount-input');
+    inp.value = currentAmount;
+    inp.dataset.regId = id;
+    inp.style.borderColor = '';
+    document.getElementById('reg-amount-save-btn').innerHTML = '<i class="fas fa-save"></i> Salva';
+    document.getElementById('reg-amount-save-btn').disabled = false;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => inp.focus(), 80);
+};
+
+window.saveRegAmount = async () => {
+    const inp = document.getElementById('reg-amount-input');
+    const btn = document.getElementById('reg-amount-save-btn');
+    const id = inp.dataset.regId;
+    const newAmount = parseFloat(inp.value);
+
+    if (isNaN(newAmount) || newAmount < 0) {
+        inp.style.borderColor = '#f55394';
+        return;
+    }
+    inp.style.borderColor = '';
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvataggio...';
+
+    const { error } = await window.supabase
+        .from('registrations')
+        .update({ total_amount: newAmount })
+        .eq('id', id);
+
+    if (error) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Salva';
+        inp.style.borderColor = '#f55394';
+        alert('Errore salvataggio: ' + error.message);
+        return;
+    }
+
+    // Aggiorna la lista locale
+    const reg = (window.__registrationsList || []).find(r => r.id === id);
+    if (reg) reg.total_amount = newAmount;
+
+    btn.innerHTML = '<i class="fas fa-check"></i> Salvato!';
+    btn.style.background = '#00d2d3';
+    btn.style.color = '#000';
+
+    setTimeout(() => {
+        closeRegAmountModal();
+        // Ricarica la pagina per aggiornare totali e riga
+        loadRegistrations();
+    }, 900);
+};
+
+window.closeRegAmountModal = () => {
+    const modal = document.getElementById('reg-amount-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
 };
 
 window.markRegistrationPaid = async (id) => {
@@ -2000,33 +2230,49 @@ window.saveHeroDates = async () => {
 // ==========================================
 
 function updateTeacherHours(bookings) {
-    const container = document.getElementById('teachers-work-summary');
-    if (!container) return;
-
-    container.innerHTML = ''; // Pulisce il contenitore
-
     const teacherStats = {};
+
+    // Inizializza tutti gli insegnanti a 0 (anche quelli senza lezioni)
+    (window.__allTeachers || []).forEach(t => {
+        teacherStats[t.full_name] = 0;
+    });
 
     bookings.forEach(booking => {
         // Ignora cancellate
         if (booking.status === 'cancelled') return;
 
+        // I break NON contano come lezioni
+        if (booking.lesson_type === 'break') return;
+
         const teacher = booking.teachers ? booking.teachers.full_name : null;
         if (!teacher) return;
 
-        // Somma al totale dell'insegnante (COUNT invece di DURATION)
-        if (!teacherStats[teacher]) {
-            teacherStats[teacher] = 0;
-        }
+        if (!teacherStats[teacher]) teacherStats[teacher] = 0;
         teacherStats[teacher] += 1;
     });
 
-    if (Object.keys(teacherStats).length === 0) {
+    // Salva i dati grezzi per la ricerca, ordinati decrescenti
+    window.__teacherHoursData = Object.entries(teacherStats)
+        .sort((a, b) => b[1] - a[1]); 
+
+    renderTeacherHours();
+}
+
+function renderTeacherHours() {
+    const container = document.getElementById('teachers-work-summary');
+    if (!container) return;
+
+    const term = (document.getElementById('search-teacher-hours')?.value || '').toLowerCase();
+    const data = (window.__teacherHoursData || []).filter(([name]) => name.toLowerCase().includes(term));
+
+    container.innerHTML = '';
+
+    if (data.length === 0) {
         container.innerHTML = '<p class="admin-muted-msg">Nessuna lezione confermata.</p>';
         return;
     }
 
-    for (const [name, count] of Object.entries(teacherStats)) {
+    data.forEach(([name, count]) => {
         const badge = document.createElement('div');
         badge.className = 'admin-stat-chip';
         badge.innerHTML = `
@@ -2034,8 +2280,10 @@ function updateTeacherHours(bookings) {
             <div class="admin-stat-chip__value">${count} lezioni</div>
         `;
         container.appendChild(badge);
-    }
+    });
 }
+
+window.filterTeacherHours = () => renderTeacherHours();
 
 // Funzione Helper: converte "10:30" o "10:30:00" in minuti totali (es. 630)
 function timeToMinutes(timeStr) {
@@ -2056,16 +2304,19 @@ function timeToMinutes(timeStr) {
 // CALCOLO PAGA STAFF (NUOVO e AGGIORNATO)
 // ==========================================
 function updateStaffPay(bookings) {
-    const container = document.getElementById('staff-pay-summary');
-    if (!container) return;
-
-    container.innerHTML = '';
-
     const staffStats = {};
+
+    // Inizializza tutti gli insegnanti a 0 (anche quelli senza lezioni/paga)
+    (window.__allTeachers || []).forEach(t => {
+        staffStats[t.full_name] = 0;
+    });
 
     bookings.forEach(b => {
         // Ignora cancellate
         if (b.status === 'cancelled') return;
+
+        // I break NON contano ai fini della paga staff
+        if (b.lesson_type === 'break') return;
 
         const teacher = b.teachers ? b.teachers.full_name : null;
         if (!teacher) return;
@@ -2082,18 +2333,32 @@ function updateStaffPay(bookings) {
             pay = parseFloat(b.teachers.pay_rate);
         }
 
-        if (pay > 0) {
-            if (!staffStats[teacher]) staffStats[teacher] = 0;
-            staffStats[teacher] += pay;
-        }
+        if (!staffStats[teacher]) staffStats[teacher] = 0;
+        staffStats[teacher] += pay;
     });
 
-    if (Object.keys(staffStats).length === 0) {
+    // Salva i dati grezzi ordinati decrescenti
+    window.__staffPayData = Object.entries(staffStats)
+        .sort((a, b) => b[1] - a[1]);
+
+    renderStaffPay();
+}
+
+function renderStaffPay() {
+    const container = document.getElementById('staff-pay-summary');
+    if (!container) return;
+
+    const term = (document.getElementById('search-staff-pay')?.value || '').toLowerCase();
+    const data = (window.__staffPayData || []).filter(([name]) => name.toLowerCase().includes(term));
+
+    container.innerHTML = '';
+
+    if (data.length === 0) {
         container.innerHTML = '<p class="admin-muted-msg">Nessuna paga staff calcolata (imposta «Paga staff» sugli insegnanti).</p>';
         return;
     }
 
-    for (const [name, totalPay] of Object.entries(staffStats)) {
+    data.forEach(([name, totalPay]) => {
         const badge = document.createElement('div');
         badge.className = 'admin-stat-chip admin-stat-chip--pay';
         badge.innerHTML = `
@@ -2101,8 +2366,10 @@ function updateStaffPay(bookings) {
             <div class="admin-stat-chip__value">€ ${totalPay}</div>
         `;
         container.appendChild(badge);
-    }
+    });
 }
+
+window.filterStaffPay = () => renderStaffPay();
 
 // ==========================================
 // SEZIONE: IMPOSTAZIONI GLOBALI

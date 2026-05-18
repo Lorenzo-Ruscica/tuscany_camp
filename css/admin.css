@@ -29,6 +29,7 @@
 /* Base */
 html {
     background: var(--color-black, #000);
+    height: 100%;
 }
 
 body.admin-app {
@@ -36,7 +37,8 @@ body.admin-app {
     font-family: 'Outfit', sans-serif;
     background: var(--admin-bg);
     color: var(--admin-text);
-    min-height: 100vh;
+    height: 100%;
+    overflow: hidden;
     line-height: 1.5;
 }
 
@@ -52,7 +54,8 @@ body.admin-app {
 /* Layout shell */
 .admin-container {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     background:
         radial-gradient(ellipse 120% 80% at 100% -20%, rgba(245, 83, 148, 0.12), transparent 50%),
         radial-gradient(ellipse 80% 60% at 0% 100%, rgba(0, 210, 211, 0.08), transparent 45%),
@@ -70,6 +73,14 @@ body.admin-app {
     border-right: 1px solid var(--admin-border);
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
     z-index: 100;
+    /* Sidebar fissa: altezza schermo, scorre internamente se il contenuto non entra */
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    position: sticky;
+    top: 0;
+    left: 0;
 }
 
 .sidebar-header {
@@ -110,18 +121,22 @@ body.admin-app {
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
     padding-right: 4px;
     gap: 0.35rem;
 }
 
-.sidebar nav::-webkit-scrollbar {
-    width: 6px;
+/* Scrollbar della sidebar */
+.sidebar::-webkit-scrollbar {
+    width: 4px;
 }
 
-.sidebar nav::-webkit-scrollbar-thumb {
-    background: rgba(245, 83, 148, 0.35);
+.sidebar::-webkit-scrollbar-thumb {
+    background: rgba(245, 83, 148, 0.3);
     border-radius: 10px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .nav-section-label {
@@ -217,6 +232,8 @@ body.admin-app {
     padding: clamp(1.25rem, 3vw, 2.5rem);
     overflow-y: auto;
     overflow-x: hidden;
+    height: 100vh;
+    box-sizing: border-box;
 }
 
 .admin-page-head {
@@ -1224,6 +1241,14 @@ input:checked + .slider:before {
 
     .admin-container {
         display: block;
+        height: auto;
+        overflow: visible;
+    }
+
+    /* Su mobile il body può scorrere normalmente (sidebar è fixed overlay) */
+    body.admin-app {
+        height: auto;
+        overflow: auto;
     }
 
     .sidebar {
@@ -1251,7 +1276,9 @@ input:checked + .slider:before {
     }
 
     .content {
+        height: auto;
         padding: 4.5rem 1rem 1.5rem;
+        overflow-y: visible;
     }
 
     .admin-table th,
