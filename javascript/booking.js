@@ -1,19 +1,19 @@
-// ============================================================
-// FILE: js/booking.js - COMPLETE VERSION (Auth + 48h Rule + Emails)
-// ============================================================
+
+
+
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // --- 0. PROTEZIONE PAGINA (CUSTOM MODAL) ---
-    // Blocca tutto immediatamente se l'utente non è loggato
+    
+    
     await checkAuthProtection();
 
-    // DOM ELEMENTS
+    
     const loader = document.getElementById('access-loader');
     const accessDeniedBox = document.getElementById('access-denied-box');
     const bookingMainContent = document.getElementById('booking-main-content');
 
-    // Form Elements
+    
     const bookingFormArea = document.querySelector('.booking-form-area');
     const teacherSelect = document.getElementById('teacherSelect');
     const datesContainer = document.getElementById('dates-container');
@@ -22,18 +22,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const slotsContainer = document.getElementById('slots-container');
     const confirmBtn = document.getElementById('btn-confirm-booking');
 
-    // List Elements
+    
     const myBookingsList = document.getElementById('my-bookings-list');
     const grandTotalDisplay = document.getElementById('grand-total-display');
 
-    // Modal Elements (Generic Alert/Confirm)
+    
     const modalOverlay = document.getElementById('custom-modal-overlay');
     const modalTitle = document.getElementById('modal-title');
     const modalMessage = document.getElementById('modal-message');
     const btnConfirm = document.getElementById('modal-btn-confirm');
     const btnCancel = document.getElementById('modal-btn-cancel');
 
-    // STATE VARIABLES
+    
     let currentUser = null;
     let selectedTeacherId = null;
     let selectedTeacherPrice = 0;
@@ -41,21 +41,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     let selectedTime = null;
     let modifyingBookingId = null;
 
-    // ============================================================
-    // 0.1 AUTH CHECKER (MODALE BLOCCANTE)
-    // ============================================================
+    
+    
+    
     async function checkAuthProtection() {
         const { data: { session } } = await window.supabase.auth.getSession();
 
         if (!session) {
-            // Riferimenti al modale di blocco (quello in fondo all'HTML)
+            
             const modal = document.getElementById('custom-modal');
             const btnOk = document.getElementById('modal-btn-ok');
             const btnCancel = document.getElementById('modal-btn-cancel');
             const title = document.getElementById('modal-title');
             const msg = document.getElementById('modal-message');
 
-            // Nascondi il loader standard se presente
+            
             const l = document.getElementById('access-loader');
             if (l) l.style.display = 'none';
 
@@ -63,10 +63,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (title) title.innerText = "Login Required";
                 if (msg) msg.innerText = "You must be logged in to book a private lesson.";
 
-                // Nascondi tasto Annulla (Login obbligatorio)
+                
                 if (btnCancel) btnCancel.style.display = 'none';
 
-                // Configura tasto Login
+                
                 if (btnOk) {
                     btnOk.innerText = "GO TO LOGIN";
                     btnOk.onclick = () => {
@@ -82,9 +82,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // ============================================================
-    // 1. HELPER: SHOW MODAL (ALERT/CONFIRM DINAMICO)
-    // ============================================================
+    
+    
+    
     function showModal(message, type = 'alert', title = 'Notice') {
         return new Promise((resolve) => {
             if (!modalOverlay) {
@@ -127,19 +127,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ============================================================
-    // 2. CHECK REGISTRATION ACCESS
-    // ============================================================
+    
+    
+    
     async function checkAccess() {
         try {
             const { data: { session }, error } = await window.supabase.auth.getSession();
             if (loader) loader.style.display = 'none';
 
-            if (error || !session) return; // Gestito da checkAuthProtection
+            if (error || !session) return; 
 
             currentUser = session.user;
 
-            // Controllo se ha compilato il form (registrazione)
+            
             const { data: regData } = await window.supabase
                 .from('registrations')
                 .select('id')
@@ -152,11 +152,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // Accesso consentito (base)
+            
             if (accessDeniedBox) accessDeniedBox.style.display = 'none';
             if (bookingMainContent) bookingMainContent.style.display = 'block';
 
-            // Check Settings
+            
             const { data: setting } = await window.supabase
                 .from('site_settings')
                 .select('value')
@@ -166,12 +166,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isBookDisabled = setting && (setting.value === false || setting.value === 'false');
 
             if (isBookDisabled) {
-                // Nascondi IL FORM DI PRENOTAZIONE, ma lascia la lista
+                
                 const formArea = document.querySelector('.booking-form-area');
                 if (formArea) {
                     formArea.style.display = 'none';
 
-                    // Inserisci messaggio "CHIUSO" al posto del form
+                    
                     const msgDiv = document.createElement('div');
                     msgDiv.innerHTML = `
                         <div style="text-align:center; padding: 40px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 30px;">
@@ -183,11 +183,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     formArea.parentNode.insertBefore(msgDiv, formArea);
                 }
             } else {
-                // Se aperto, carica i teachers
+                
                 loadTeachers();
             }
 
-            // SEMPRE caricare le mie prenotazioni (anche se chiuso)
+            
             loadMyBookings();
 
         } catch (err) {
@@ -196,9 +196,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // ============================================================
-    // 3. BOOKING LOGIC (TEACHERS & SLOTS)
-    // ============================================================
+    
+    
+    
     async function loadTeachers() {
         const { data: teachers } = await window.supabase
             .from('teachers')
@@ -290,14 +290,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let query = window.supabase
             .from('bookings')
-            .select('id, start_time, end_time') // Recupera anche end_time per check durata
+            .select('id, start_time, end_time') 
             .eq('teacher_id', selectedTeacherId)
             .eq('lesson_date', dateStr)
             .neq('status', 'cancelled');
 
         const { data: takenSlots } = await query;
 
-        // Filtra quella in modifica
+        
         const takenBookings = takenSlots.filter(b => b.id !== modifyingBookingId);
 
         slotsContainer.innerHTML = '';
@@ -321,11 +321,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const slotStart = current;
             const slotEnd = current + duration;
 
-            // Check Sovrapposizione Reale (inclusi 90 min lectures)
+            
             const isTaken = takenBookings.some(b => {
                 const bStart = timeToMins(b.start_time);
                 const bEnd = timeToMins(b.end_time);
-                // Overlap: (InizioSlot < FineBooking) AND (FineSlot > InizioBooking)
+                
                 return slotStart < bEnd && slotEnd > bStart;
             });
 
@@ -359,7 +359,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             `CONFIRM BOOKING (€ <span id="price-preview">${selectedTeacherPrice}</span>)`;
     }
 
-    // --- PULSANTE CONFERMA (CON EMAIL) ---
+    
     if (confirmBtn) {
         confirmBtn.addEventListener('click', async () => {
             const originalText = confirmBtn.innerText;
@@ -371,7 +371,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             let result;
 
             if (modifyingBookingId) {
-                // UPDATE
+                
                 result = await window.supabase
                     .from('bookings')
                     .update({
@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     })
                     .eq('id', modifyingBookingId);
             } else {
-                // INSERT
+                
                 result = await window.supabase
                     .from('bookings')
                     .insert({
@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (result.error) {
                 await showModal("Error: " + result.error.message, 'alert', 'Error');
             } else {
-                // 1. EMAIL
+                
                 const teacherName = teacherSelect.options[teacherSelect.selectedIndex].text;
                 const actionText = modifyingBookingId ? "LESSON MODIFIED" : "BOOKING CONFIRMED";
 
@@ -416,7 +416,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     "Dancer"
                 );
 
-                // 2. SUCCESS
+                
                 await showModal(
                     modifyingBookingId ? "Lesson Updated Successfully!" : "Lesson Booked Successfully!",
                     'alert',
@@ -431,9 +431,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ============================================================
-    // 4. MY BOOKINGS LIST (CON BLOCCO 48H)
-    // ============================================================
+    
+    
+    
     async function loadMyBookings() {
         if (!myBookingsList) return;
 
@@ -450,10 +450,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             myBookingsList.innerHTML = '<p style="text-align: center; opacity: 0.6; width:100%; padding: 20px;">No lessons booked yet.</p>';
         } else {
             bookings.forEach(b => {
-                // Se non cancellato, somma al totale
+                
                 if (b.status !== 'cancelled') total += b.lesson_price;
 
-                // --- GESTIONE CARD CANCELLATA ---
+                
                 if (b.status === 'cancelled') {
                     myBookingsList.innerHTML += `
                         <div class="booking-item cancelled" style="opacity:0.5; border:1px solid #333; position:relative;">
@@ -466,12 +466,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
 
-                // --- LOGICA 48 ORE ---
+                
                 const canEdit = isEditable(b.lesson_date, b.start_time);
                 let actionButtons = '';
 
                 if (canEdit) {
-                    // Pulsanti Attivi
+                    
                     actionButtons = `
                         <button class="btn-action-small" onclick="startModifyBooking(${b.id}, ${b.teacher_id}, '${b.lesson_date}', '${b.start_time}')" title="Modify">
                             <i class="fas fa-edit"></i> Edit
@@ -480,7 +480,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <i class="fas fa-trash"></i> Cancel
                         </button>`;
                 } else {
-                    // Pulsanti Bloccati
+                    
                     actionButtons = `
                         <div style="display:flex; align-items:center; gap:5px; color:#777;">
                             <i class="fas fa-lock"></i> <span style="font-size:0.75rem;">Locked (< 48h)</span>
@@ -489,7 +489,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>`;
                 }
 
-                // --- RENDER CARD ATTIVA ---
+                
                 myBookingsList.innerHTML += `
                     <div class="booking-item">
                         <h4>${b.teachers.full_name}</h4>
@@ -508,7 +508,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (grandTotalDisplay) grandTotalDisplay.textContent = "€ " + total;
     }
 
-    // --- HELPER 48 ORE ---
+    
     function isEditable(dateStr, timeStr) {
         const lessonDate = new Date(`${dateStr}T${timeStr}`);
         const now = new Date();
@@ -517,11 +517,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         return diffMs > hours48;
     }
 
-    // ============================================================
-    // 5. MODIFY & CANCEL ACTIONS
-    // ============================================================
+    
+    
+    
     window.startModifyBooking = async (id, teacherId, date, startTime) => {
-        // Doppio controllo (anche se UI è bloccata, blocchiamo via JS)
+        
         if (!isEditable(date, startTime)) {
             await showModal("Cannot modify: Lesson is in less than 48 hours.", 'alert', 'Locked');
             return;
@@ -543,14 +543,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.cancelBooking = async (id) => {
-        // Nota: Qui servirebbe recuperare la data della lezione per controllare le 48h, 
-        // ma ci fidiamo della UI che nasconde il tasto. Per sicurezza suprema bisognerebbe
-        // fare una fetch su booking ID e ricontrollare. 
+        
+        
+        
 
         const userConfirmed = await showModal("Are you sure you want to cancel this lesson?", 'confirm', 'Warning');
         if (!userConfirmed) return;
 
-        // Fetch per dati email e check sicurezza
+        
         const { data: bookingData } = await window.supabase
             .from('bookings')
             .select('*, teachers(full_name)')
@@ -564,10 +564,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // Cancel
+        
         await window.supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id);
 
-        // Email
+        
         if (bookingData) {
             await sendEmailNotification(
                 "BOOKING CANCELLED",
@@ -603,9 +603,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         confirmBtn.style.display = 'none';
     }
 
-    // ==========================================
-    // 6. EMAILJS & UTILS
-    // ==========================================
+    
+    
+    
     async function sendEmailNotification(type, bookingData, userEmail, userName) {
         const templateParams = {
             to_email: userEmail,
@@ -627,7 +627,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function minsToTime(mins) { return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}:00`; }
     function formatDateNice(dateStr) { const date = new Date(dateStr); return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }); }
 
-    // AVVIA
+    
     checkAccess();
 
 });

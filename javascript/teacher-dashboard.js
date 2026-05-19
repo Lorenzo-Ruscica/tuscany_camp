@@ -1,6 +1,6 @@
-// ==========================================
-// FILE: js/teacher_dashboard.js (TIMELINE VIEW)
-// ==========================================
+
+
+
 
 let currentTeacherId = null;
 let allBookings = [];
@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await checkTeacherAuth();
 });
 
-// 1. AUTENTICAZIONE
+
 async function checkTeacherAuth() {
     const nameLabel = document.getElementById('teacher-name');
     const container = document.getElementById('schedule-container');
@@ -42,11 +42,11 @@ async function checkTeacherAuth() {
     }
 }
 
-// 2. CARICAMENTO DATI
+
 async function loadMySchedule() {
     const container = document.getElementById('schedule-container');
 
-    // Query completa
+    
     const { data: bookings, error } = await window.supabase
         .from('bookings')
         .select(`
@@ -67,7 +67,7 @@ async function loadMySchedule() {
     renderTimeline(allBookings);
 }
 
-// 3. RENDERIZZAZIONE "TIMELINE STYLE"
+
 function renderTimeline(bookingsToRender) {
     const container = document.getElementById('schedule-container');
     container.innerHTML = '';
@@ -81,8 +81,8 @@ function renderTimeline(bookingsToRender) {
         return;
     }
 
-    // A. RAGGRUPPIAMO LE LEZIONI PER DATA
-    // Creiamo un oggetto: { "2026-05-22": [lezione1, lezione2], "2026-05-23": [...] }
+    
+    
     const grouped = {};
     bookingsToRender.forEach(b => {
         if (!grouped[b.lesson_date]) {
@@ -91,19 +91,19 @@ function renderTimeline(bookingsToRender) {
         grouped[b.lesson_date].push(b);
     });
 
-    // B. ITERIAMO SUI GIORNI
+    
     for (const [date, dayBookings] of Object.entries(grouped)) {
 
-        // 1. Formatta la data header (es. "Venerdì 22 Maggio")
+        
         const dateObj = new Date(date);
         const dateNice = dateObj.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
-        const dayName = dateNice.charAt(0).toUpperCase() + dateNice.slice(1); // Maiuscola iniziale
+        const dayName = dateNice.charAt(0).toUpperCase() + dateNice.slice(1); 
 
-        // 2. Crea il contenitore del giorno
+        
         const dayGroup = document.createElement('div');
         dayGroup.className = 'day-group';
 
-        // 3. Aggiungi Header Data
+        
         let dayHTML = `
             <div class="day-header">
                 <i class="far fa-calendar"></i> ${dayName}
@@ -111,17 +111,17 @@ function renderTimeline(bookingsToRender) {
             <div class="timeline-wrapper">
         `;
 
-        // 4. Aggiungi le lezioni di quel giorno (Time Slots)
+        
         dayBookings.forEach(b => {
-            // Default setup per Private Lesson
+            
             let displayName = "Private Lesson";
-            let cardStyle = "border-left: 4px solid var(--color-hot-pink);"; // Standard style
+            let cardStyle = "border-left: 4px solid var(--color-hot-pink);"; 
             let iconHtml = '<i class="far fa-user"></i>';
             let phone = null;
 
             const type = (b.lesson_type || 'private').toLowerCase();
 
-            // GESTIONE VISIVA PER TIPO
+            
             if (type === 'lecture') {
                 displayName = "LECTURE";
                 cardStyle = "border-left: 6px solid #feca57; background: #fff9e6;";
@@ -131,7 +131,7 @@ function renderTimeline(bookingsToRender) {
                 cardStyle = "border-left: 6px solid #54a0ff; background: #eaf6ff;";
                 iconHtml = '<i class="fas fa-users" style="color:#54a0ff"></i>';
             } else {
-                // Standard Booking (Private)
+                
                 if (b.registrations) {
                     if (b.registrations.full_name) displayName = b.registrations.full_name;
                     else {
@@ -144,13 +144,13 @@ function renderTimeline(bookingsToRender) {
                 }
             }
 
-            // Orario pulito (10:00 - 10:45)
+            
             const timeRange = `${b.start_time.slice(0, 5)} - ${b.end_time.slice(0, 5)}`;
 
-            // Bottoni Azione (Solo se c'è telefono e non è una Lecture generica)
+            
             let btns = '';
-            // Se è private e ha telefono mostriamo i tasti.
-            // Se è special, magari no, a meno che non ci siano note.
+            
+            
             if (type === 'private' && phone) {
                 const p = phone.replace(/\s+/g, '').replace(/-/g, '');
                 btns = `
@@ -160,7 +160,7 @@ function renderTimeline(bookingsToRender) {
                     </div>`;
             }
 
-            // HTML del singolo SLOT
+            
             dayHTML += `
                 <div class="time-slot" style="margin-bottom:15px;">
                     <div class="time-label" style="font-weight:bold; color:#666; margin-bottom:5px;">${b.start_time.slice(0, 5)}</div>
@@ -181,13 +181,13 @@ function renderTimeline(bookingsToRender) {
             `;
         });
 
-        dayHTML += `</div></div>`; // Chiude timeline-wrapper e dayHTML (Wait, loop logic check below)
+        dayHTML += `</div></div>`; 
         dayGroup.innerHTML = dayHTML;
         container.appendChild(dayGroup);
     }
 }
 
-// 4. FILTRI
+
 window.filterSchedule = () => {
     const inputDate = document.getElementById('filter-date').value;
     if (!inputDate) { renderTimeline(allBookings); return; }

@@ -1,8 +1,8 @@
-/* =========================================
-   8. SPECIFIC PAGES (Program, Teachers, Gallery, etc.)
-   ========================================= */
 
-/* Program Page */
+
+
+
+ 
 .page-hero {
     padding: 160px 0 40px;
     text-align: center;
@@ -103,7 +103,7 @@
     box-shadow: 0 0 30px rgba(245, 83, 148, .6);
 }
 
-/* Guest Teachers */
+ 
 .organizer-section {
     padding: 0 0 60px;
     text-align: center;
@@ -219,7 +219,7 @@
     color: rgba(245, 83, 148, .7);
 }
 
-/* Packages Page */
+ 
 .packages-section {
     padding-bottom: 100px;
 }
@@ -409,7 +409,7 @@
     color: rgba(255, 255, 255, .9);
 }
 
-/* Gallery & Lightbox */
+ 
 .gallery-section {
     padding-bottom: 100px;
 }

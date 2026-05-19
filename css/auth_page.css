@@ -1,20 +1,20 @@
-/* =========================================
-   10. AUTH PAGE (LOGIN/SIGNUP)
-   ========================================= */
-/* --- FIX SPAZIO REGISTRAZIONE --- */
+
+
+
+ 
 
 .auth-section {
-    min-height: 100vh; /* Occupa almeno tutta l'altezza dello schermo */
+    min-height: 100vh;  
     display: flex;
     flex-direction: column;
-    justify-content: center; /* Cerca di centrare verticalmente */
+    justify-content: center;  
     
-    /* MODIFICA IMPORTANTE: Aumentiamo lo spazio sopra e sotto */
-    padding-top: 200px;    /* Più spazio dall'Header (era 100px) */
-    padding-bottom: 120px; /* Più spazio dal Footer */
+     
+    padding-top: 200px;     
+    padding-bottom: 120px;  
     
     position: relative;
-    z-index: 10; /* Assicura che stia sopra eventuali elementi di sfondo */
+    z-index: 10;  
 }
 .auth-container {
     background: rgba(20, 20, 20, .8);

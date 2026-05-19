@@ -1,8 +1,8 @@
-// ============================================================
-// FILE: js/admin.js - COMPLETE VERSION (With Delete Entry)
-// ============================================================
 
-// 1. VARIABILI GLOBALI
+
+
+
+
 let teacherSelectAvail;
 let teacherSelectPrint;
 
@@ -105,7 +105,7 @@ function initAdminMobileMenu() {
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // --- A. CONTROLLO SICUREZZA (WHITELIST) ---
+    
     const { data: { session } } = await window.supabase.auth.getSession();
 
     if (!session) {
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // LISTA EMAIL AMMINISTRATORI
+    
     const allowedAdmins = [
         'admin@tuscanycamp.com',
         'mirko@gozzoli.com',
@@ -129,23 +129,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 
-    // --- B. INIZIALIZZAZIONE ELEMENTI ---
+    
     teacherSelectAvail = document.getElementById('avail-teacher');
     teacherSelectPrint = document.getElementById('print-teacher');
 
-    // --- C. CARICAMENTO DATI INIZIALI ---
+    
     initAdminMobileMenu();
     loadTeachers();
     loadActiveShifts();
     loadCurrentTimer();
 });
 
-// ============================================================
-// 2. FUNZIONI GLOBALI
-// ============================================================
 
-// --- GESTIONE TAB ---
-// --- GESTIONE TAB CLASSICHE (Dashboard) ---
+
+
+
+
+
 window.showTab = (tabId, el) => {
     const dashboardSection = document.getElementById('section-dashboard');
 
@@ -164,7 +164,7 @@ window.showTab = (tabId, el) => {
     const tab = document.getElementById('tab-' + tabId);
     if (tab) tab.classList.add('active');
 
-    // D. Caricamento Dati Specifici
+    
     if (tabId === 'accounting') loadAllBookings();
     if (tabId === 'messages') loadMessages();
     if (tabId === 'registrations') loadRegistrations();
@@ -181,18 +181,18 @@ window.showTab = (tabId, el) => {
     if (tabId === 'timer') loadCurrentTimer();
 };
 
-// --- LOGOUT ---
+
 window.logout = async () => {
     await window.supabase.auth.signOut();
     window.location.href = 'index.html';
 };
 
-// --- GESTIONE DISPONIBILITÀ ---
+
 window.loadTeachers = async () => {
     const { data: teachers } = await window.supabase.from('teachers').select('*').order('full_name');
     if (!teachers) return;
 
-    // Salva lista globale per uso in updateTeacherHours / updateStaffPay
+    
     window.__allTeachers = teachers;
 
     let html = '<option value="">Seleziona...</option>';
@@ -233,13 +233,13 @@ window.addSpecialBooking = async () => {
 
     if (!teacherId || !date || !startStr) return alert("Compila i campi obbligatori");
 
-    // 1. Calcola Tempi (minuti)
+    
     const startMin = timeToMinutes(startStr);
     const endMin = startMin + duration;
     const startObj = new Date(); startObj.setHours(Math.floor(startMin / 60), startMin % 60, 0); const fullStartTime = `${String(startObj.getHours()).padStart(2, '0')}:${String(startObj.getMinutes()).padStart(2, '0')}:00`;
     const endObj = new Date(); endObj.setHours(Math.floor(endMin / 60), endMin % 60, 0); const fullEndTime = `${String(endObj.getHours()).padStart(2, '0')}:${String(endObj.getMinutes()).padStart(2, '0')}:00`;
 
-    // 2. Fetch Disponibilità
+    
     const { data: availabilities } = await window.supabase
         .from('teacher_availability')
         .select('*')
@@ -250,7 +250,7 @@ window.addSpecialBooking = async () => {
         return alert("Questo insegnante non ha disponibilità per questa data.");
     }
 
-    // 3. Controlla se rientra in un blocco
+    
     let fitsInBlock = false;
     availabilities.forEach(block => {
         const blockStart = timeToMinutes(block.start_hour);
@@ -262,7 +262,7 @@ window.addSpecialBooking = async () => {
         return alert("Orario non valido: deve rientrare nelle disponibilità (Turni) dell'insegnante.");
     }
 
-    // 4. Controlla sovrapposizioni con altre lezioni (Bookings)
+    
     const { data: conflicts } = await window.supabase
         .from('bookings')
         .select('*')
@@ -275,7 +275,7 @@ window.addSpecialBooking = async () => {
         conflicts.forEach(b => {
             const bStart = timeToMinutes(b.start_time);
             const bEnd = timeToMinutes(b.end_time);
-            // Logica sovrapposizione: (StartA < EndB) && (EndA > StartB)
+            
             if (startMin < bEnd && endMin > bStart) isConflict = true;
         });
     }
@@ -284,13 +284,13 @@ window.addSpecialBooking = async () => {
         return alert("Errore: Orario sovrapposto a un'altra prenotazione esistente.");
     }
 
-    // 5. Inserisci
+    
     const { data: { session } } = await window.supabase.auth.getSession();
     if (!session) return alert("Sessione scaduta.");
 
-    // Per le prenotazioni speciali NON si usa user_id dell'admin,
-    // perché la FK fk_bookings_to_registrations richiede che il user_id
-    // esista nella tabella registrations (e l'admin non è registrato lì).
+    
+    
+    
     const { error } = await window.supabase.from('bookings').insert({
         teacher_id: teacherId,
         lesson_date: date,
@@ -298,8 +298,8 @@ window.addSpecialBooking = async () => {
         end_time: fullEndTime,
         lesson_price: 0,
         admin_notes: type + " (Admin)",
-        staff_pay: pay ? parseFloat(pay) : null, // Override Paga Staff
-        lesson_type: type.toLowerCase(), // 'lecture' or 'group lesson'
+        staff_pay: pay ? parseFloat(pay) : null, 
+        lesson_type: type.toLowerCase(), 
         status: 'confirmed'
     });
 
@@ -339,7 +339,7 @@ window.deleteShift = async (id) => {
     loadActiveShifts();
 };
 
-// --- STAMPA E PDF ---
+
 window.loadSchedule = async () => {
     const teacherId = teacherSelectPrint.value;
     const date = document.getElementById('print-date').value;
@@ -403,7 +403,7 @@ window.downloadPDF = () => {
     html2pdf().set(opt).from(element).save().catch(err => alert("Errore PDF: " + err.message));
 };
 
-// --- CONTABILITÀ E MODIFICA (EDIT) ---
+
 let currentBookings = [];
 
 window.loadAllBookings = async () => {
@@ -411,7 +411,7 @@ window.loadAllBookings = async () => {
         .from('bookings')
         .select('*, teachers(full_name, pay_rate), registrations(full_name)')
         .order('lesson_date', { ascending: false })
-        .limit(5000); // Elevato per recuperare tutto il necessario
+        .limit(5000); 
 
     currentBookings = bookings || [];
     window.adminPagerState.accounting.page = 1;
@@ -486,7 +486,7 @@ window.downloadAccountingPDF = () => {
     printDiv.style.backgroundColor = '#fff';
     printDiv.style.fontFamily = "'Outfit', 'Helvetica Neue', Arial, sans-serif";
 
-    // CSS per stampare bene le tabelle su più pagine
+    
     let html = `
         <style>
             .pdf-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
@@ -581,9 +581,9 @@ window.downloadAccountingPDF = () => {
     html2pdf().set(opt).from(printDiv).save().catch(err => alert("Errore generazione PDF: " + err.message));
 };
 
-// ==========================================
-// GESTIONE PAGAMENTI / SALDI
-// ==========================================
+
+
+
 window.__unpaidIdsData = {};
 
 function renderBalancesTablePage() {
@@ -609,7 +609,7 @@ function renderBalancesTablePage() {
     renderPagerUI('balances-pager', 'balances', st.page, filtered.length);
 }
 
-window.__allUserBookings = {}; // uid -> array di booking completi
+window.__allUserBookings = {}; 
 
 window.loadBalances = async () => {
     const tbody = document.getElementById('balances-body');
@@ -730,9 +730,9 @@ window.loadBalances = async () => {
     }
 };
 
-// ============================================================
-// MODAL: LEZIONI UTENTE (con modifica prezzo)
-// ============================================================
+
+
+
 window.openUserLessons = (uid, userName) => {
     const modal = document.getElementById('user-lessons-modal');
     const title = document.getElementById('user-lessons-modal-title');
@@ -835,7 +835,7 @@ window.saveLessonPrice = async (bookingId, uid) => {
         return;
     }
 
-    // Aggiorna il dato locale
+    
     if (window.__allUserBookings[uid]) {
         const bk = window.__allUserBookings[uid].find(b => b.id === bookingId);
         if (bk) bk.lesson_price = newPrice;
@@ -851,12 +851,12 @@ window.saveLessonPrice = async (bookingId, uid) => {
         btn.disabled = false;
     }, 1800);
 
-    // Ricarica la tabella pagamenti in background per aggiornare i totali
+    
     loadBalances();
 };
 
 window.closeUserLessonsModal = (event) => {
-    // Se chiamata con evento, chiudi solo se il click è sull'overlay stesso
+    
     if (event && event.currentTarget && event.target !== event.currentTarget) return;
     const modal = document.getElementById('user-lessons-modal');
     if (modal) modal.style.display = 'none';
@@ -961,15 +961,15 @@ window.markAsPaid = async (uid) => {
     const newPaidIds = window.__unpaidIdsData[uid] || [];
     if (newPaidIds.length === 0) return;
 
-    // 1. Legge database attuale per non sovrascrivere altri
+    
     const { data: settings } = await window.supabase.from('site_settings').select('value').eq('key', 'paid_bookings').maybeSingle();
     let currentPaid = settings && settings.value ? JSON.parse(settings.value) : [];
     if (!Array.isArray(currentPaid)) currentPaid = [];
 
-    // 2. Unisco l'array senza duplicati
+    
     const updatedPaid = [...new Set([...currentPaid, ...newPaidIds])];
 
-    // 3. Salva di nuovo
+    
     const { error } = await window.supabase.from('site_settings').upsert({ key: 'paid_bookings', value: JSON.stringify(updatedPaid) }, { onConflict: 'key' });
 
     if (error) {
@@ -983,21 +983,21 @@ window.markAsPaid = async (uid) => {
 window.revertAllUserPayments = async (uid) => {
     if (!confirm("ATTENZIONE! Vuoi annullare TUTTI i pagamenti registrati per questo utente? Verrà segnato tutto di nuovo come 'Da Saldare'.")) return;
 
-    // Trova tutti gli ID di questo utente
+    
     const { data: userBookings } = await window.supabase.from('bookings').select('id').eq('user_id', uid);
     if (!userBookings || userBookings.length === 0) return;
 
     const userBookingIds = userBookings.map(b => b.id);
 
-    // Leggi DB attuale
+    
     const { data: settings } = await window.supabase.from('site_settings').select('value').eq('key', 'paid_bookings').maybeSingle();
     let currentPaid = settings && settings.value ? JSON.parse(settings.value) : [];
     if (!Array.isArray(currentPaid)) currentPaid = [];
 
-    // Togli tutti gli ID di questo utente dai pagati
+    
     currentPaid = currentPaid.filter(id => !userBookingIds.includes(id));
 
-    // Salva nel DB
+    
     const { error } = await window.supabase.from('site_settings').upsert({ key: 'paid_bookings', value: JSON.stringify(currentPaid) }, { onConflict: 'key' });
 
     if (error) {
@@ -1013,12 +1013,12 @@ window.filterBalances = () => {
     renderBalancesTablePage();
 };
 
-// --- GESTIONE LEZIONI SPECIALI (Disponibilità) ---
+
 window.loadSpecialBookings = async () => {
     const list = document.getElementById('special-bookings-list');
     if (!list) return;
 
-    // Query SOLO le prenotazioni speciali (quelle senza user_id)
+    
     const { data: specials, error } = await window.supabase
         .from('bookings')
         .select('*, teachers(full_name)')
@@ -1062,7 +1062,7 @@ window.deleteSpecialBooking = async (id) => {
     if (error) alert("Errore: " + error.message);
     else {
         loadSpecialBookings();
-        // Se siamo anche nella view contabilità ricarichiamo (opzionale)
+        
     }
 };
 
@@ -1116,7 +1116,7 @@ function renderAccountingTable(bookings) {
     renderPagerUI('accounting-pager', 'accounting', st.page, bookings.length);
 }
 
-// LOGICA MODALE MODIFICA (CON INVIO EMAIL)
+
 window.openEditModal = (id, date, start, end, price, teacherId) => {
     document.getElementById('edit-booking-id').value = id;
     document.getElementById('edit-date').value = date;
@@ -1124,7 +1124,7 @@ window.openEditModal = (id, date, start, end, price, teacherId) => {
     document.getElementById('edit-end').value = end.slice(0, 5);
     document.getElementById('edit-price').value = price;
 
-    // Popola il select insegnanti
+    
     const sel = document.getElementById('edit-teacher');
     const teachers = window.__allTeachers || [];
     sel.innerHTML = teachers.map(t =>
@@ -1152,7 +1152,7 @@ window.saveBookingChanges = async () => {
     const formattedStart = newStart.length === 5 ? newStart + ":00" : newStart;
     const formattedEnd = newEnd.length === 5 ? newEnd + ":00" : newEnd;
 
-    // 1. UPDATE SU SUPABASE
+    
     const updatePayload = {
         lesson_date: newDate, start_time: formattedStart, end_time: formattedEnd,
         lesson_price: newPrice, admin_notes: "Modified by Admin"
@@ -1167,7 +1167,7 @@ window.saveBookingChanges = async () => {
     if (error) {
         alert("Errore: " + error.message);
     } else {
-        // 2. RECUPERA DATI PER EMAIL E INVIA NOTIFICA
+        
         const { data: fullBooking } = await window.supabase
             .from('bookings')
             .select('*, registrations(user_email, full_name), teachers(full_name)')
@@ -1197,17 +1197,17 @@ window.saveBookingChanges = async () => {
 window.cancelBookingAdmin = async (id) => {
     if (!confirm("Annullare la prenotazione? L'utente riceverà una notifica.")) return;
 
-    // 1. RECUPERA DATI PRIMA DI CANCELLARE (per email)
+    
     const { data: bookingData } = await window.supabase
         .from('bookings')
         .select('*, registrations(user_email, full_name), teachers(full_name)')
         .eq('id', id)
         .single();
 
-    // 2. CANCELLA (UPDATE STATUS)
+    
     await window.supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id);
 
-    // 3. INVIA EMAIL
+    
     if (bookingData && bookingData.registrations) {
         await sendEmailNotification(
             "CANCELLED BY ADMIN",
@@ -1231,7 +1231,7 @@ window.deleteBookingPermanent = async (id) => {
     loadAllBookings();
 };
 
-// --- ALTRE TAB (Messaggi) ---
+
 function renderMessagesPage() {
     const tbody = document.getElementById('messages-body');
     const msgs = window.__messagesList || [];
@@ -1284,9 +1284,9 @@ window.deleteMessage = async (id) => {
     }
 };
 
-// ==========================================
-// SEZIONE: GESTIONE ISCRIZIONI (REGISTRATIONS)
-// ==========================================
+
+
+
 function renderRegistrationsPage() {
     const tbody = document.getElementById('registrations-body');
     const all = window.__registrationsList || [];
@@ -1378,9 +1378,9 @@ window.loadRegistrations = async () => {
     renderRegistrationsPage();
 };
 
-// ============================================================
-// MODAL: MODIFICA IMPORTO ISCRIZIONE
-// ============================================================
+
+
+
 window.openEditRegAmount = (id, currentAmount, name) => {
     const modal = document.getElementById('reg-amount-modal');
     if (!modal) return;
@@ -1423,7 +1423,7 @@ window.saveRegAmount = async () => {
         return;
     }
 
-    // Aggiorna la lista locale
+    
     const reg = (window.__registrationsList || []).find(r => r.id === id);
     if (reg) reg.total_amount = newAmount;
 
@@ -1433,7 +1433,7 @@ window.saveRegAmount = async () => {
 
     setTimeout(() => {
         closeRegAmountModal();
-        // Ricarica la pagina per aggiornare totali e riga
+        
         loadRegistrations();
     }, 900);
 };
@@ -1452,7 +1452,7 @@ window.markRegistrationPaid = async (id) => {
         currentPaid.push(id);
     }
 
-    // 1. Salva in site_settings (lista ausiliaria)
+    
     const { error: settingsError } = await window.supabase
         .from('site_settings')
         .upsert({ key: 'paid_registrations', value: JSON.stringify(currentPaid) }, { onConflict: 'key' });
@@ -1462,7 +1462,7 @@ window.markRegistrationPaid = async (id) => {
         return;
     }
 
-    // 2. Aggiorna anche il campo payment_status nella tabella registrations
+    
     const { error: regError } = await window.supabase
         .from('registrations')
         .update({ payment_status: 'paid' })
@@ -1470,10 +1470,10 @@ window.markRegistrationPaid = async (id) => {
 
     if (regError) {
         console.warn("Attenzione: impossibile aggiornare payment_status:", regError.message);
-        // Non blocchiamo: il dato in site_settings è già salvato
+        
     }
 
-    // 3. Aggiorna la variabile in memoria
+    
     window.__paidRegistrations = currentPaid;
 
     alert("Iscrizione segnata come saldata!");
@@ -1486,7 +1486,7 @@ window.revertRegistrationPayment = async (id) => {
     let currentPaid = window.__paidRegistrations || [];
     currentPaid = currentPaid.filter(paidId => paidId !== id);
 
-    // 1. Aggiorna site_settings
+    
     const { error: settingsError } = await window.supabase
         .from('site_settings')
         .upsert({ key: 'paid_registrations', value: JSON.stringify(currentPaid) }, { onConflict: 'key' });
@@ -1496,7 +1496,7 @@ window.revertRegistrationPayment = async (id) => {
         return;
     }
 
-    // 2. Reimposta payment_status nella tabella registrations
+    
     const { error: regError } = await window.supabase
         .from('registrations')
         .update({ payment_status: 'In attesa' })
@@ -1506,23 +1506,23 @@ window.revertRegistrationPayment = async (id) => {
         console.warn("Attenzione: impossibile aggiornare payment_status:", regError.message);
     }
 
-    // 3. Aggiorna variabile in memoria
+    
     window.__paidRegistrations = currentPaid;
 
     alert("Pagamento annullato con successo.");
     loadRegistrations();
 };
 
-// ==========================================
-// FUNZIONE CORRETTA: ELIMINAZIONE A CASCATA
-// ==========================================
+
+
+
 window.deleteEntry = async (id) => {
     const confirmed = confirm("SEI SICURO? \nEliminare questo iscritto cancellerà anche TUTTE le sue prenotazioni e lo storico.\nQuesta azione è irreversibile.");
 
     if (!confirmed) return;
 
     try {
-        // PASSO 1: Dobbiamo trovare lo user_id collegato a questa registrazione
+        
         const { data: regData, error: fetchError } = await window.supabase
             .from('registrations')
             .select('user_id')
@@ -1532,7 +1532,7 @@ window.deleteEntry = async (id) => {
         if (fetchError) throw fetchError;
 
         if (regData && regData.user_id) {
-            // PASSO 2: Cancelliamo TUTTE le prenotazioni (bookings) di questo utente
+            
             const { error: bookingError } = await window.supabase
                 .from('bookings')
                 .delete()
@@ -1540,11 +1540,11 @@ window.deleteEntry = async (id) => {
 
             if (bookingError) {
                 console.warn("Attenzione: errore cancellazione prenotazioni o nessuna prenotazione trovata.", bookingError);
-                // Non blocchiamo, proviamo comunque a cancellare la registrazione
+                
             }
         }
 
-        // PASSO 3: Ora che le prenotazioni sono andate, cancelliamo l'iscrizione
+        
         const { error: regError } = await window.supabase
             .from('registrations')
             .delete()
@@ -1553,7 +1553,7 @@ window.deleteEntry = async (id) => {
         if (regError) throw regError;
 
         alert("Iscritto e relative prenotazioni eliminati con successo.");
-        loadRegistrations(); // Ricarica la tabella
+        loadRegistrations(); 
 
     } catch (error) {
         console.error("Errore cancellazione:", error);
@@ -1679,7 +1679,7 @@ window.downloadRegistrationsPDF = async () => {
     html2pdf().set(opt).from(printDiv).save().catch(err => alert("Errore generazione PDF: " + err.message));
 };
 
-// --- GESTIONE TEACHERS LIST ---
+
 function renderTeachersPage() {
     const tbody = document.getElementById('teachers-list-body');
     const teachers = window.__teachersList || [];
@@ -1731,24 +1731,24 @@ window.loadTeachersList = async () => {
     renderTeachersPage();
 };
 
-// ... (addNewTeacher rimane uguale) ...
 
-// ==========================================
-// MODIFICA INSEGNANTE (NUOVO)
-// ==========================================
+
+
+
+
 window.openEditTeacherModal = (id, name, email, price, discipline, payRate) => {
-    // Popola e apri un modale (lo creiamo al volo o usiamo un prompt evoluto? Meglio un prompt veloce per ora o un modale "rigido")
-    // Dato che non ho un modale HTML pronto per Teacher, uso un approccio "Quick Edit" con Prompt a cascata o un modale "rigido" creato al volo.
-    // MA l'utente vuole un tasto. Facciamo apparire il modale generico "admin-edit-modal" adattandolo? No, è specifico per booking.
-    // Creiamo un modale semplice via JS (Overlay).
+    
+    
+    
+    
 
     let modal = document.getElementById('teacher-edit-modal');
     if (!modal) {
-        // Crea il modale se non esiste
+        
         const div = document.createElement('div');
         div.id = 'teacher-edit-modal';
         div.className = 'modal-overlay';
-        div.style.display = 'flex'; // Flex per centrare
+        div.style.display = 'flex'; 
         div.innerHTML = `
             <div class="modal-box" style="background:#222; padding:30px; border-radius:10px; border:1px solid #444; width:400px;">
                 <h3 style="color:var(--color-hot-pink); margin-top:0;">Modifica Insegnante</h3>
@@ -1785,7 +1785,7 @@ window.openEditTeacherModal = (id, name, email, price, discipline, payRate) => {
         modal = div;
     }
 
-    // Popola
+    
     document.getElementById('edit-teacher-id').value = id;
     document.getElementById('edit-teacher-name').value = name;
     document.getElementById('edit-teacher-email').value = email;
@@ -1821,7 +1821,7 @@ window.saveTeacherChanges = async () => {
         alert("Insegnante aggiornato!");
         document.getElementById('teacher-edit-modal').style.display = 'none';
         loadTeachersList();
-        loadTeachers(); // Aggiorna anche le select
+        loadTeachers(); 
     }
 };
 
@@ -1829,7 +1829,7 @@ window.addNewTeacher = async () => {
     const name = document.getElementById('new-teacher-name').value;
     const email = document.getElementById('new-teacher-email').value;
     const price = document.getElementById('new-teacher-price').value;
-    const payRate = document.getElementById('new-teacher-pay-rate').value; // NUOVO
+    const payRate = document.getElementById('new-teacher-pay-rate').value; 
     const disc = document.getElementById('new-teacher-discipline').value;
 
     if (!name) return alert("Nome obbligatorio");
@@ -1838,7 +1838,7 @@ window.addNewTeacher = async () => {
         full_name: name,
         email: email.trim(),
         base_price: price,
-        pay_rate: payRate || 0, // Salva la Paga
+        pay_rate: payRate || 0, 
         discipline: disc,
         is_active: true
     });
@@ -1852,15 +1852,15 @@ window.addNewTeacher = async () => {
     loadTeachersList();
     loadTeachers();
 };
-// ==========================================
-// FUNZIONE MANCANTE: ELIMINA INSEGNANTE
-// ==========================================
+
+
+
 window.deleteTeacher = async (id) => {
-    // 1. Conferma di sicurezza
+    
     if (!confirm("SEI SICURO?\nEliminare l'insegnante cancellerà anche tutte le sue disponibilità e lezioni future.\nQuesta azione è irreversibile.")) return;
 
     try {
-        // 2. Elimina le disponibilità (Turni) collegate
+        
         const { error: errAvail } = await window.supabase
             .from('teacher_availability')
             .delete()
@@ -1868,7 +1868,7 @@ window.deleteTeacher = async (id) => {
 
         if (errAvail) console.warn("Errore eliminazione disponibilità:", errAvail);
 
-        // 3. Elimina le lezioni (Bookings) collegate
+        
         const { error: errBook } = await window.supabase
             .from('bookings')
             .delete()
@@ -1876,7 +1876,7 @@ window.deleteTeacher = async (id) => {
 
         if (errBook) console.warn("Errore eliminazione lezioni:", errBook);
 
-        // 4. Infine elimina l'insegnante
+        
         const { error } = await window.supabase
             .from('teachers')
             .delete()
@@ -1886,7 +1886,7 @@ window.deleteTeacher = async (id) => {
 
         alert("Insegnante eliminato con successo.");
 
-        // 5. Ricarica le liste per aggiornare la pagina
+        
         loadTeachersList();
         loadTeachers();
 
@@ -1896,9 +1896,9 @@ window.deleteTeacher = async (id) => {
     }
 };
 
-// ==========================================
-// SEZIONE: GESTIONE ACCOUNT DI SISTEMA
-// ==========================================
+
+
+
 function renderSystemUsersPage() {
     const tbody = document.getElementById('system-users-body');
     const allUsers = window.__systemUsersList || [];
@@ -1979,15 +1979,15 @@ window.deleteSystemUser = async (uuid) => {
     else { alert("Account eliminato."); loadSystemUsers(); }
 };
 
-// ==========================================
-// FUNZIONE INVIO EMAIL (EMAILJS)
-// ==========================================
+
+
+
 async function sendEmailNotification(type, bookingData, userEmail, userName) {
 
     const templateParams = {
-        to_email: userEmail,       // Destinatario
-        user_name: userName,       // Nome Utente
-        action_type: type,         // Es: "MODIFIED BY ADMIN"
+        to_email: userEmail,       
+        user_name: userName,       
+        action_type: type,         
         teacher_name: bookingData.teacher_name,
         lesson_date: bookingData.lesson_date,
         lesson_time: bookingData.lesson_time,
@@ -2003,9 +2003,9 @@ async function sendEmailNotification(type, bookingData, userEmail, userName) {
         console.error("EmailJS Error:", error);
     }
 }
-// ==========================================
-// NUOVE FUNZIONI: DETTAGLI ISCRIZIONE
-// ==========================================
+
+
+
 
 window.viewRegistrationDetails = async (id) => {
     const modal = document.getElementById('reg-details-modal');
@@ -2138,7 +2138,7 @@ window.addEventListener('click', (e) => {
 });
 
 async function loadCurrentTimer() {
-    // 1. Carica data End Timer
+    
     const { data: timerData } = await window.supabase
         .from('site_settings')
         .select('value')
@@ -2149,7 +2149,7 @@ async function loadCurrentTimer() {
         document.getElementById('timer-date-input').value = timerData.value;
     }
 
-    // 2. Carica Testi Data Evento
+    
     const { data: heroData } = await window.supabase
         .from('site_settings')
         .select('value')
@@ -2168,7 +2168,7 @@ async function loadCurrentTimer() {
     }
 }
 
-// 2. Funzione per salvare la nuova data (chiamata dal bottone HTML)
+
 window.saveTimerDate = async () => {
     const newVal = document.getElementById('timer-date-input').value;
 
@@ -2225,23 +2225,23 @@ window.saveHeroDates = async () => {
         btn.disabled = false;
     }
 };
-// ==========================================
-// CALCOLO ORE INSEGNANTI (CONTABILITÀ)
-// ==========================================
+
+
+
 
 function updateTeacherHours(bookings) {
     const teacherStats = {};
 
-    // Inizializza tutti gli insegnanti a 0 (anche quelli senza lezioni)
+    
     (window.__allTeachers || []).forEach(t => {
         teacherStats[t.full_name] = 0;
     });
 
     bookings.forEach(booking => {
-        // Ignora cancellate
+        
         if (booking.status === 'cancelled') return;
 
-        // I break NON contano come lezioni
+        
         if (booking.lesson_type === 'break') return;
 
         const teacher = booking.teachers ? booking.teachers.full_name : null;
@@ -2251,7 +2251,7 @@ function updateTeacherHours(bookings) {
         teacherStats[teacher] += 1;
     });
 
-    // Salva i dati grezzi per la ricerca, ordinati decrescenti
+    
     window.__teacherHoursData = Object.entries(teacherStats)
         .sort((a, b) => b[1] - a[1]); 
 
@@ -2285,7 +2285,7 @@ function renderTeacherHours() {
 
 window.filterTeacherHours = () => renderTeacherHours();
 
-// Funzione Helper: converte "10:30" o "10:30:00" in minuti totali (es. 630)
+
 function timeToMinutes(timeStr) {
     if (!timeStr) return 0;
     const parts = timeStr.split(':');
@@ -2293,42 +2293,42 @@ function timeToMinutes(timeStr) {
     const m = parseInt(parts[1]) || 0;
     return (h * 60) + m;
 }
-// ==========================================
-// FINE GESTIONE PAGAMENTI / SALDI
-// ==========================================
 
-// ==========================================
-// CALCOLO PAGA STAFF (NUOVO)
-// ==========================================
-// ==========================================
-// CALCOLO PAGA STAFF (NUOVO e AGGIORNATO)
-// ==========================================
+
+
+
+
+
+
+
+
+
 function updateStaffPay(bookings) {
     const staffStats = {};
 
-    // Inizializza tutti gli insegnanti a 0 (anche quelli senza lezioni/paga)
+    
     (window.__allTeachers || []).forEach(t => {
         staffStats[t.full_name] = 0;
     });
 
     bookings.forEach(b => {
-        // Ignora cancellate
+        
         if (b.status === 'cancelled') return;
 
-        // I break NON contano ai fini della paga staff
+        
         if (b.lesson_type === 'break') return;
 
         const teacher = b.teachers ? b.teachers.full_name : null;
         if (!teacher) return;
 
-        // --- LOGICA DI CALCOLO PAGA ---
+        
         let pay = 0;
 
-        // 1. Se c'è un override specifico per questa lezione (es. Group/Lecture)
+        
         if (b.staff_pay !== null && b.staff_pay !== undefined) {
             pay = parseFloat(b.staff_pay);
         }
-        // 2. Altrimenti usa la paga base dell'insegnante (Standard Booking)
+        
         else if (b.teachers.pay_rate > 0) {
             pay = parseFloat(b.teachers.pay_rate);
         }
@@ -2337,7 +2337,7 @@ function updateStaffPay(bookings) {
         staffStats[teacher] += pay;
     });
 
-    // Salva i dati grezzi ordinati decrescenti
+    
     window.__staffPayData = Object.entries(staffStats)
         .sort((a, b) => b[1] - a[1]);
 
@@ -2371,15 +2371,15 @@ function renderStaffPay() {
 
 window.filterStaffPay = () => renderStaffPay();
 
-// ==========================================
-// SEZIONE: IMPOSTAZIONI GLOBALI
-// ==========================================
+
+
+
 window.loadGlobalSettings = async () => {
-    // 1. Chiavi che ci aspettiamo
+    
     const keys = ['entry_form', 'book_lesson'];
 
-    // 2. Fetch da Supabase
-    // Tabella 'site_settings' (key, value)
+    
+    
     const { data: settings, error } = await window.supabase
         .from('site_settings')
         .select('*')
@@ -2390,7 +2390,7 @@ window.loadGlobalSettings = async () => {
         return;
     }
 
-    // 3. Mappa i valori (Default: true se non esiste)
+    
     let entryEnabled = true;
     let bookEnabled = true;
 
@@ -2398,15 +2398,15 @@ window.loadGlobalSettings = async () => {
         const entryObj = settings.find(s => s.key === 'entry_form');
         const bookObj = settings.find(s => s.key === 'book_lesson');
 
-        // Se il valore nel DB è false, allora è false. Altrimenti true.
-        // Gestiamo sia booleani che stringhe
+        
+        
         const isFalse = (val) => val === false || val === 'false';
 
         if (entryObj && isFalse(entryObj.value)) entryEnabled = false;
         if (bookObj && isFalse(bookObj.value)) bookEnabled = false;
     }
 
-    // 4. Aggiorna UI
+    
     const entryCheck = document.getElementById('toggle-entry-form');
     const bookCheck = document.getElementById('toggle-book-lesson');
 
@@ -2420,23 +2420,23 @@ window.toggleSetting = async (key) => {
 
     const isEnabled = checkbox.checked;
 
-    // Upsert (Inserisci o Aggiorna)
+    
     const { error } = await window.supabase
         .from('site_settings')
         .upsert({ key: key, value: isEnabled }, { onConflict: 'key' });
 
     if (error) {
         alert("Errore aggiornamento impostazione: " + error.message);
-        // Revert UI se fallisce
+        
         checkbox.checked = !isEnabled;
     }
 };
 
-// ==========================================
-// SEZIONE: GESTIONE GUEST TEACHERS
-// ==========================================
+
+
+
 window.loadGuestTeachersSettings = async () => {
-    // 1. Fetch da site_settings
+    
     const { data: settings, error } = await window.supabase
         .from('site_settings')
         .select('*')
@@ -2463,7 +2463,7 @@ window.saveGuestTeachers = async () => {
     const stdVal = document.getElementById('admin-guest-std').value;
     const latVal = document.getElementById('admin-guest-lat').value;
 
-    // Mostra caricamento (opzionale)
+    
     const btn = document.querySelector('button[onclick="saveGuestTeachers()"]');
     const oldText = btn ? btn.innerHTML : "Salva Modifiche";
     if (btn) {
@@ -2471,12 +2471,12 @@ window.saveGuestTeachers = async () => {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvataggio...';
     }
 
-    // Upsert Standard
+    
     const { error: err1 } = await window.supabase
         .from('site_settings')
         .upsert({ key: 'guest_list_standard', value: stdVal }, { onConflict: 'key' });
 
-    // Upsert Latin
+    
     const { error: err2 } = await window.supabase
         .from('site_settings')
         .upsert({ key: 'guest_list_latin', value: latVal }, { onConflict: 'key' });
@@ -2493,17 +2493,17 @@ window.saveGuestTeachers = async () => {
     }
 };
 
-// ==========================================
-// SEZIONE: GESTIONE PDF DOWNLOAD
-// ==========================================
+
+
+
 window.loadPDFSettings = async () => {
-    // Fetch settings
+    
     const { data: settings } = await window.supabase
         .from('site_settings')
         .select('*')
         .in('key', ['pdf_program_url', 'pdf_packages_url']);
 
-    // Default Labels
+    
     const progLabel = document.getElementById('current-program-link');
     const packLabel = document.getElementById('current-packages-link');
     if (progLabel) progLabel.innerHTML = 'File attuale: <em>Default</em>';
@@ -2523,7 +2523,7 @@ window.loadPDFSettings = async () => {
 };
 
 window.uploadPDF = async (type) => {
-    // 1. Elementi UI
+    
     const fileId = type === 'program' ? 'pdf-program-file' : 'pdf-packages-file';
     const statusId = type === 'program' ? 'pdf-program-status' : 'pdf-packages-status';
     const btnId = type === 'program' ? 'btn-upload-program' : 'btn-upload-packages';
@@ -2543,12 +2543,12 @@ window.uploadPDF = async (type) => {
         return;
     }
 
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+    if (file.size > 10 * 1024 * 1024) { 
         alert("Il file è troppo grande! Max 10MB.");
         return;
     }
 
-    // 2. Blocca UI
+    
     const oldBtnText = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Caricamento...';
@@ -2556,11 +2556,11 @@ window.uploadPDF = async (type) => {
     statusLabel.style.color = "#aaa";
 
     try {
-        // 3. Nome File Univoco (timestamp)
+        
         const fileName = `${type}_${Date.now()}.pdf`;
-        const bucketName = 'pdf_downloads'; // Assicuro che esista policy pubblica
+        const bucketName = 'pdf_downloads'; 
 
-        // 4. Upload Storage
+        
         const { data, error: uploadError } = await window.supabase.storage
             .from(bucketName)
             .upload(fileName, file, {
@@ -2569,19 +2569,19 @@ window.uploadPDF = async (type) => {
             });
 
         if (uploadError) {
-            // Se errore bucket, proviamo a crearne uno fittizio o mostriamo errore.
-            // Supabase client-side non può creare bucket.
+            
+            
             throw new Error("Errore Upload (Bucket 'pdf_downloads' non esiste o permessi negati?): " + uploadError.message);
         }
 
-        // 5. Ottieni URL Pubblico
+        
         const { data: publicURLData } = window.supabase.storage
             .from(bucketName)
             .getPublicUrl(fileName);
 
         const publicUrl = publicURLData.publicUrl;
 
-        // 6. Salva Link in Settings
+        
         const settingKey = type === 'program' ? 'pdf_program_url' : 'pdf_packages_url';
 
         const { error: dbError } = await window.supabase
@@ -2590,11 +2590,11 @@ window.uploadPDF = async (type) => {
 
         if (dbError) throw new Error("Errore salvataggio DB: " + dbError.message);
 
-        // Successo
+        
         statusLabel.innerText = "Caricamento completato con successo!";
         statusLabel.style.color = "#00d2d3";
-        fileInput.value = ''; // Reset input
-        loadPDFSettings(); // Ricarica visualizzazione
+        fileInput.value = ''; 
+        loadPDFSettings(); 
 
     } catch (err) {
         console.error(err);
@@ -2602,25 +2602,25 @@ window.uploadPDF = async (type) => {
         statusLabel.style.color = "red";
     } finally {
         btn.disabled = false;
-        btn.innerHTML = oldText; // Restore original button content (icon + text)
-        // Actually oldBtnText might be just text if I read innerHTML before icon change? No, innerHTML includes icon.
-        // But let's restore safely.
+        btn.innerHTML = oldText; 
+        
+        
 
         if (type === 'program') btn.innerHTML = '<i class="fas fa-upload"></i> Carica & Aggiorna Programma';
         else btn.innerHTML = '<i class="fas fa-upload"></i> Carica & Aggiorna Pacchetti';
     }
 };
 
-// ==========================================
-// SEZIONE: NEWSLETTER (EmailJS)
-// ==========================================
 
-// 1. CARICA STATISTICHE E IMPOSTAZIONI
+
+
+
+
 window.dbNewsletterEmails = [];
 window.manualNewsletterEmails = [];
 
 window.loadNewsletterStats = async () => {
-    // 0. Carica da Supabase (site_settings: newsletter_manual_emails)
+    
     try {
         const { data: mnSetting } = await window.supabase
             .from('site_settings')
@@ -2629,12 +2629,12 @@ window.loadNewsletterStats = async () => {
             .maybeSingle();
 
         if (mnSetting && mnSetting.value) {
-            // Se è JSON, parsalo. Se è stringa raw (non dovrebbe, ma per sicurezza), gestisci.
-            // Assumiamo che salviamo JSON.stringify
+            
+            
             try {
                 window.manualNewsletterEmails = JSON.parse(mnSetting.value);
             } catch (jsonErr) {
-                // Fallback se fosse salvato come stringa CSV o altro
+                
                 console.warn("Manual emails not JSON", jsonErr);
                 window.manualNewsletterEmails = [];
             }
@@ -2645,7 +2645,7 @@ window.loadNewsletterStats = async () => {
         console.error("Errore caricamento email manuali da DB", e);
     }
 
-    // A. Carica Template ID salvato
+    
     const { data: settings } = await window.supabase
         .from('site_settings')
         .select('value')
@@ -2656,7 +2656,7 @@ window.loadNewsletterStats = async () => {
         document.getElementById('newsletter-template-id').value = settings.value;
     }
 
-    // B. Conta Email Univoche
+    
     const loader = document.getElementById('newsletter-loader');
     const stats = document.getElementById('newsletter-stats');
 
@@ -2666,14 +2666,14 @@ window.loadNewsletterStats = async () => {
     try {
         let uniqueEmails = [];
 
-        // 1. Tenta di usare la funzione sicura (TUTTI gli account)
+        
         const { data: allUsers, error: rpcError } = await window.supabase.rpc('get_all_user_emails');
 
         if (!rpcError && allUsers) {
-            uniqueEmails = allUsers.map(u => u.email); // La funzione ritorna oggetti {email: "..."}
+            uniqueEmails = allUsers.map(u => u.email); 
         } else {
             console.warn("Newsletter: RPC failed, falling back to registrations table.", rpcError);
-            // 2. Fallback: Tabella registrations (Solo chi ha compilato il form)
+            
             const { data: regUsers, error: regError } = await window.supabase
                 .from('registrations')
                 .select('user_email');
@@ -2682,13 +2682,13 @@ window.loadNewsletterStats = async () => {
             uniqueEmails = regUsers.map(u => u.user_email);
         }
 
-        // Filtra base
+        
         uniqueEmails = [...new Set(uniqueEmails.filter(e => e && e.trim() !== '' && e.includes('@')))];
 
-        // SALVA IN GLOBALE
+        
         window.dbNewsletterEmails = uniqueEmails;
 
-        // UPDATE UI (COMBINA CON MANUALI)
+        
         updateNewsletterList();
 
     } catch (err) {
@@ -2707,13 +2707,13 @@ window.addManualEmails = async () => {
     const raw = input.value;
     if (!raw.trim()) return alert("Inserisci delle email.");
 
-    // Split su virgola, spazio o a capo
+    
     const emails = raw.split(/[\s,]+/);
     let addedCount = 0;
 
     emails.forEach(e => {
         const clean = e.trim();
-        // Validazione semplice
+        
         if (clean && clean.includes('@') && clean.includes('.')) {
             if (!window.manualNewsletterEmails.includes(clean)) {
                 window.manualNewsletterEmails.push(clean);
@@ -2723,7 +2723,7 @@ window.addManualEmails = async () => {
     });
 
     if (addedCount > 0) {
-        // SALVA IN SUPABASE
+        
         const { error } = await window.supabase
             .from('site_settings')
             .upsert({ key: 'newsletter_manual_emails', value: JSON.stringify(window.manualNewsletterEmails) }, { onConflict: 'key' });
@@ -2731,7 +2731,7 @@ window.addManualEmails = async () => {
         if (error) {
             alert("Errore salvataggio DB: " + error.message);
         } else {
-            input.value = ''; // Pulisci input
+            input.value = ''; 
             updateNewsletterList();
             alert(`${addedCount} email aggiunte manualmente e salvate su DB.`);
         }
@@ -2743,7 +2743,7 @@ window.addManualEmails = async () => {
 window.removeManualEmail = async (email) => {
     window.manualNewsletterEmails = window.manualNewsletterEmails.filter(e => e !== email);
 
-    // UPDATE SUPABASE
+    
     const { error } = await window.supabase
         .from('site_settings')
         .upsert({ key: 'newsletter_manual_emails', value: JSON.stringify(window.manualNewsletterEmails) }, { onConflict: 'key' });
@@ -2757,21 +2757,21 @@ window.removeManualEmail = async (email) => {
 };
 
 window.updateNewsletterList = () => {
-    // 1. Array separati
+    
     const dbUnique = [...new Set(window.dbNewsletterEmails)].sort();
 
-    // Le manuali vere e proprie sono quelle non presenti nel DB
+    
     const manualUnique = [...new Set(window.manualNewsletterEmails.filter(e => !dbUnique.includes(e)))].sort();
 
-    // 2. Combina per l'invio e update global
+    
     let combined = [...dbUnique, ...manualUnique];
     window.cachedNewsletterEmails = combined;
 
-    // 3. Update UI Statistiche Generali
+    
     const stats = document.getElementById('newsletter-stats');
     if (stats) stats.innerText = combined.length;
 
-    // 4. Selettori UI per le liste separate
+    
     const dbList = document.getElementById('newsletter-db-list');
     const manualList = document.getElementById('newsletter-manual-list');
     const countDb = document.getElementById('count-db-list');
@@ -2780,7 +2780,7 @@ window.updateNewsletterList = () => {
     if (countDb) countDb.innerText = dbUnique.length;
     if (countManual) countManual.innerText = manualUnique.length;
 
-    // Render Lista DB
+    
     if (dbList) {
         if (dbUnique.length === 0) {
             dbList.innerHTML = '<em style="color:#777;">Nessuna email nel database.</em>';
@@ -2789,7 +2789,7 @@ window.updateNewsletterList = () => {
         }
     }
 
-    // Render Lista Manuale
+    
     if (manualList) {
         if (manualUnique.length === 0) {
             manualList.innerHTML = '<em style="color:#777;">Nessuna email inserita manualmente.</em>';
@@ -2805,7 +2805,7 @@ window.updateNewsletterList = () => {
     }
 };
 
-// 2. SALVA TEMPLATE ID
+
 window.saveNewsletterSettings = async () => {
     const val = document.getElementById('newsletter-template-id').value;
     if (!val) return alert("Inserisci un Template ID valido.");
@@ -2824,9 +2824,9 @@ window.saveNewsletterSettings = async () => {
     else alert("Template ID salvato con successo!");
 };
 
-// 3. INVIA NEWSLETTER (Test o Tutte)
+
 window.sendNewsletter = async (isTest) => {
-    // Controlli preliminari
+    
     const templateId = document.getElementById('newsletter-template-id').value;
     const subject = document.getElementById('newsletter-subject').value;
     const message = document.getElementById('newsletter-message').value;
@@ -2835,9 +2835,9 @@ window.sendNewsletter = async (isTest) => {
     if (!subject) return alert("Inserisci un Oggetto.");
     if (!message) return alert("Inserisci un Messaggio.");
 
-    const SERVICE_ID = "service_fik9j1g"; // Fisso da email_service.js
+    const SERVICE_ID = "service_fik9j1g"; 
 
-    // --- MODO TEST ---
+    
     if (isTest) {
         const testEmail = document.getElementById('newsletter-test-email').value;
         if (!testEmail) return alert("Inserisci un'email di test.");
@@ -2861,9 +2861,9 @@ window.sendNewsletter = async (isTest) => {
         return;
     }
 
-    // --- MODO TUTTI (BULK) ---
+    
     if (!window.cachedNewsletterEmails || window.cachedNewsletterEmails.length === 0) {
-        await loadNewsletterStats(); // Riprova a caricare se vuoto
+        await loadNewsletterStats(); 
         if (!window.cachedNewsletterEmails || window.cachedNewsletterEmails.length === 0) {
             return alert("Nessun destinatario trovato.");
         }
@@ -2873,7 +2873,7 @@ window.sendNewsletter = async (isTest) => {
     const confirmMsg = `Stai per inviare questa email a ${recipients.length} utenti. Sei sicuro?`;
     if (!confirm(confirmMsg)) return;
 
-    // UI Progress
+    
     const progressContainer = document.getElementById('newsletter-progress-container');
     const progressBar = document.getElementById('newsletter-progress-bar');
     const progressText = document.getElementById('newsletter-progress-text');
@@ -2884,11 +2884,11 @@ window.sendNewsletter = async (isTest) => {
     let successCount = 0;
     let failCount = 0;
 
-    // Loop con ritardo (Rate Limiting per evitare blocco browser/API)
+    
     for (let i = 0; i < recipients.length; i++) {
         const email = recipients[i];
 
-        // Aggiorna UI
+        
         const percent = Math.round(((i + 1) / recipients.length) * 100);
         progressBar.style.width = percent + "%";
         progressText.innerText = `Invio ${i + 1}/${recipients.length} (${email})`;
@@ -2905,11 +2905,11 @@ window.sendNewsletter = async (isTest) => {
             failCount++;
         }
 
-        // Attesa 500ms tra le email
+        
         await new Promise(r => setTimeout(r, 500));
     }
 
-    // Fine
+    
     alert(`Completato!\nInviate con successo: ${successCount}\nErrori: ${failCount}`);
     btnAll.disabled = false;
     progressContainer.style.display = 'none';

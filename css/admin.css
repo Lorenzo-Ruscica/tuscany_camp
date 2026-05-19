@@ -1,4 +1,4 @@
-/* Tuscany Camp — Admin (allineato al sito: variabili, gradienti, glass) */
+ 
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
 
 :root {
@@ -14,10 +14,10 @@
     --admin-radius: 16px;
     --admin-radius-sm: 10px;
     --admin-scroll-h: min(62vh, 560px);
-    /* Ombre neutre (no bagliori colorati) */
+     
     --admin-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     --admin-btn-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-    /* Un solo colore azione (magenta brand); variante solo leggermente più scura */
+     
     --admin-btn: #cf4585;
     --admin-btn-hover: #d96096;
     --admin-btn-active: #b83d73;
@@ -26,7 +26,7 @@
     --admin-btn-ghost-hover-bg: rgba(207, 69, 133, 0.22);
 }
 
-/* Base */
+ 
 html {
     background: var(--color-black, #000);
     height: 100%;
@@ -51,7 +51,7 @@ body.admin-app {
     letter-spacing: 0.02em;
 }
 
-/* Layout shell */
+ 
 .admin-container {
     display: flex;
     height: 100vh;
@@ -62,7 +62,7 @@ body.admin-app {
         var(--admin-bg);
 }
 
-/* Sidebar */
+ 
 .sidebar {
     width: var(--admin-sidebar-w);
     flex-shrink: 0;
@@ -73,7 +73,7 @@ body.admin-app {
     border-right: 1px solid var(--admin-border);
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
     z-index: 100;
-    /* Sidebar fissa: altezza schermo, scorre internamente se il contenuto non entra */
+     
     height: 100vh;
     overflow-y: auto;
     overflow-x: hidden;
@@ -125,7 +125,7 @@ body.admin-app {
     gap: 0.35rem;
 }
 
-/* Scrollbar della sidebar */
+ 
 .sidebar::-webkit-scrollbar {
     width: 4px;
 }
@@ -225,7 +225,7 @@ body.admin-app {
     color: var(--admin-text);
 }
 
-/* Main content */
+ 
 .content {
     flex: 1;
     min-width: 0;
@@ -273,7 +273,7 @@ body.admin-app {
     }
 }
 
-/* Cards & panels */
+ 
 .card,
 .admin-card {
     background: var(--admin-surface);
@@ -350,7 +350,7 @@ body.admin-app {
     box-shadow: none;
 }
 
-/* Pulsanti azione: stesso colore, senza alone colorato */
+ 
 .btn-add {
     background: var(--admin-btn);
     color: #fff;
@@ -374,7 +374,7 @@ body.admin-app {
     background: var(--admin-btn-active);
 }
 
-/* Variante solo leggermente più scura (stessa tonalità) — nome storico .btn-add--cyan */
+ 
 .btn-add.btn-add--cyan {
     background: var(--admin-btn-active);
     box-shadow: var(--admin-btn-shadow);
@@ -393,7 +393,7 @@ body.admin-app {
     font-size: 0.8rem;
 }
 
-/* Icone / azioni in tabella */
+ 
 .admin-action-btn {
     background: none;
     border: none;
@@ -411,7 +411,7 @@ body.admin-app {
     color: var(--admin-btn-hover);
 }
 
-/* Toolbar (filtri) */
+ 
 .admin-toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -447,7 +447,7 @@ body.admin-app {
     font-size: 0.8rem;
 }
 
-/* Stat row */
+ 
 .stats-row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -604,7 +604,7 @@ body.admin-app {
     color: #feca57;
 }
 
-/* Liste turni / speciali — altezza limitata */
+ 
 .shift-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -666,7 +666,7 @@ body.admin-app {
     background: var(--admin-btn-ghost-bg);
 }
 
-/* Tabelle — scroll verticale + header sticky */
+ 
 .table-responsive {
     width: 100%;
     margin-bottom: 1rem;
@@ -730,7 +730,7 @@ body.admin-app {
     border-bottom: none;
 }
 
-/* Paginazione */
+ 
 .admin-pager {
     display: flex;
     flex-wrap: wrap;
@@ -772,7 +772,7 @@ body.admin-app {
     cursor: not-allowed;
 }
 
-/* Stampa piano */
+ 
 .control-bar {
     display: flex;
     flex-wrap: wrap;
@@ -867,7 +867,7 @@ body.admin-app {
     padding-top: 0.75rem;
 }
 
-/* Modal */
+ 
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -939,7 +939,7 @@ body.admin-app {
 }
 
 
-/* Registration details modal redesign */
+ 
 .reg-modal {
     background: rgba(0, 0, 0, 0.82);
 }
@@ -1065,7 +1065,7 @@ body.admin-app {
     }
 }
 
-/* Switch */
+ 
 .switch {
     position: relative;
     display: inline-block;
@@ -1116,7 +1116,7 @@ input:checked + .slider:before {
     border-radius: 28px;
 }
 
-/* Impostazioni: righe toggle */
+ 
 .settings-toggle-row {
     display: flex;
     justify-content: space-between;
@@ -1142,7 +1142,7 @@ input:checked + .slider:before {
     font-size: 0.82rem;
 }
 
-/* Newsletter email list boxes */
+ 
 .newsletter-lists {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -1193,7 +1193,7 @@ input:checked + .slider:before {
     font-size: 0.7rem;
 }
 
-/* Mobile */
+ 
 .mobile-toggle {
     display: none;
     position: fixed;
@@ -1245,7 +1245,7 @@ input:checked + .slider:before {
         overflow: visible;
     }
 
-    /* Su mobile il body può scorrere normalmente (sidebar è fixed overlay) */
+     
     body.admin-app {
         height: auto;
         overflow: auto;

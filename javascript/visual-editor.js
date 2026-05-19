@@ -1,4 +1,4 @@
-// Visual Editor Script
+
 let siteTexts = window.__dynamicSiteTexts || {};
 let activeElement = null;
 
@@ -119,7 +119,7 @@ const validTags = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P', 'SPAN', 'A', 'LI', '
 document.addEventListener('mouseover', (e) => {
     if (editorUI.contains(e.target)) return;
 
-    // Ignora elementi dinamici
+    
     if (e.target.closest('.event-date-box') || e.target.closest('.countdown-wrapper') || e.target.id === 'home-date-days' || e.target.id === 'home-date-month') {
         return;
     }
@@ -139,7 +139,7 @@ document.addEventListener('mouseout', (e) => {
 document.addEventListener('click', (e) => {
     if (editorUI.contains(e.target)) return;
 
-    // Ignora elementi dinamici del countdown e date hero
+    
     if (e.target.closest('.event-date-box') || e.target.closest('.countdown-wrapper') || e.target.id === 'home-date-days' || e.target.id === 'home-date-month') {
         return;
     }

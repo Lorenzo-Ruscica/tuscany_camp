@@ -1,20 +1,20 @@
-// ============================================================
-// FILE: gallery.js
-// DESCRIZIONE: Dynamic Countdown (Supabase) + Lightbox Gallery
-// ============================================================
+
+
+
+
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // --- 1. DYNAMIC COUNTDOWN (SUPABASE) ---
+    
     const elDays = document.getElementById('days');
 
-    // Eseguiamo la logica timer solo se gli elementi esistono nella pagina (es. Home)
+    
     if (elDays) {
 
-        // Data di default (Fallback) se il database non risponde o è vuoto
+        
         let targetDateString = "2026-05-23T09:00:00";
 
-        // 1. Tenta di scaricare la data aggiornata da Supabase
+        
         if (window.supabase) {
             try {
                 const { data, error } = await window.supabase
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // 2. Avvia il calcolo del tempo
+        
         const eventDate = new Date(targetDateString).getTime();
         let timer;
 
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const currSeconds = document.getElementById('seconds');
             const countdownContainer = document.getElementById('countdown');
 
-            // Se il tempo è scaduto
+            
             if (diff < 0) {
                 if (timer) clearInterval(timer);
                 if (countdownContainer) {
@@ -54,26 +54,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // Calcoli matematici
+            
             const d = Math.floor(diff / (1000 * 60 * 60 * 24));
             const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const s = Math.floor((diff % (1000 * 60)) / 1000);
 
-            // Aggiornamento DOM
+            
             if (currDays) currDays.innerText = d < 10 ? "0" + d : d;
             if (currHours) currHours.innerText = h < 10 ? "0" + h : h;
             if (currMinutes) currMinutes.innerText = m < 10 ? "0" + m : m;
             if (currSeconds) currSeconds.innerText = s < 10 ? "0" + s : s;
         };
 
-        // Aggiorna subito senza aspettare 1 secondo
+        
         updateTimer();
         timer = setInterval(updateTimer, 1000);
     }
 
-    // --- X. HERO DATES DYNAMIC TEXT (SUPABASE) ---
-    // Gestione indipendente dal Timer per evitare conflitti con vecchi replace
+    
+    
     if (document.getElementById('home-date-days') || document.getElementById('home-date-month')) {
         let heroDaysText = "23 &bull; 24";
         let heroMonthText = "MAY 2026";
@@ -96,26 +96,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // Funzione per applicare al DOM ad intervalli (per combattere il sovrascritture di config.js)
+        
         const applyHeroDates = () => {
             const elDays = document.getElementById('home-date-days');
             const elMonth = document.getElementById('home-date-month');
 
-            // Applica i valori originali senza flash fastidiosi
+            
             if (elDays && elDays.innerHTML !== heroDaysText) elDays.innerHTML = heroDaysText;
             if (elMonth && elMonth.innerHTML !== heroMonthText) elMonth.innerHTML = heroMonthText;
         };
 
-        // Applica subito
+        
         applyHeroDates();
 
-        // E teniamo allineato per un po' di tempo a causa del caricatore testi di config.js
+        
         const heroInterval = setInterval(applyHeroDates, 200);
-        // Stoppiamo dopo 5 secondi perché ormai config.js ha sicuramente finito
+        
         setTimeout(() => clearInterval(heroInterval), 5000);
     }
 
-    // --- 2. LIGHTBOX GALLERY (INVARIATO) ---
+    
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
     const closeBtn = document.querySelector('.close-lightbox');
@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     lightbox.style.alignItems = "center";
                     lightbox.style.justifyContent = "center";
                     lightboxImg.src = img.src;
-                    document.body.style.overflow = "hidden"; // Blocca scroll pagina sotto
+                    document.body.style.overflow = "hidden"; 
                 }
             });
         });

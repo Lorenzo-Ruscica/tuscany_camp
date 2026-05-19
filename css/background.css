@@ -1,15 +1,15 @@
-/* =========================================
-   2. BACKGROUND SHAPES (FIXED)
-   ========================================= */
+
+
+
 .bg-shapes {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: -1; /* Sta dietro a tutto */
+    z-index: -1;  
     overflow: hidden;
-    background-color: #050505; /* Il nero di fondo sta QUI */
+    background-color: #050505;  
 }
 
 .shape {
