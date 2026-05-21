@@ -213,6 +213,65 @@
                         <h1 class="admin-page-title">Contabilità lezioni</h1>
                         <p class="admin-page-desc">Riepilogo lezioni private, filtri e modifiche. La tabella è scorrevole; usa la paginazione in basso per lunghe liste.</p>
                     </header>
+
+                    <!-- ========================================== -->
+                    <!-- PANNELLO: PRENOTA PER CONTO DI UN UTENTE  -->
+                    <!-- ========================================== -->
+                    <div class="card" style="border:1px solid rgba(0,210,211,0.3); border-left:4px solid var(--admin-cyan); margin-bottom:1.5rem;">
+                        <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1.25rem;">
+                            <i class="fas fa-calendar-plus" style="color:var(--admin-cyan); font-size:1.3rem;"></i>
+                            <h2 class="admin-section-title" style="margin:0; color:var(--admin-cyan);">Prenota lezione per utente</h2>
+                        </div>
+
+                        <!-- Step 1: Coppia / Utente -->
+                        <div class="form-row" style="align-items:flex-start; gap:1rem; flex-wrap:wrap;">
+                            <div class="form-group" style="flex:1; min-width:220px;">
+                                <label>1. Coppia / Utente</label>
+                                <select id="ab-user-select" onchange="adminBookingOnUserChange()" style="width:100%;">
+                                    <option value="">Caricamento...</option>
+                                </select>
+                            </div>
+
+                            <!-- Step 2: Insegnante -->
+                            <div class="form-group" style="flex:1; min-width:220px;">
+                                <label>2. Insegnante</label>
+                                <select id="ab-teacher-select" onchange="adminBookingOnTeacherChange()" style="width:100%;" disabled>
+                                    <option value="">Seleziona prima l'utente…</option>
+                                </select>
+                            </div>
+
+                            <!-- Step 3: Prezzo (modificabile) -->
+                            <div class="form-group" style="min-width:130px;">
+                                <label>Prezzo (€)</label>
+                                <input type="number" id="ab-price" min="0" step="1" style="width:100%;" placeholder="Auto" disabled>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Date disponibili -->
+                        <div id="ab-date-group" style="margin-top:1.25rem; display:none;">
+                            <label style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--admin-muted);">3. Scegli data</label>
+                            <div id="ab-dates-container" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;">
+                                <span class="admin-muted-msg">Seleziona un insegnante…</span>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Orari -->
+                        <div id="ab-time-group" style="margin-top:1.25rem; display:none;">
+                            <label style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--admin-muted);">4. Scegli orario</label>
+                            <div id="ab-slots-container" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;">
+                                <span class="admin-muted-msg">Seleziona una data…</span>
+                            </div>
+                        </div>
+
+                        <!-- Conferma -->
+                        <div style="margin-top:1.25rem; display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                            <button type="button" id="ab-confirm-btn" onclick="adminBookingConfirm()" class="btn-add" style="background:var(--admin-cyan); color:#000; display:none;">
+                                <i class="fas fa-check"></i> Conferma prenotazione
+                            </button>
+                            <span id="ab-confirm-label" style="color:var(--admin-muted); font-size:0.85rem;"></span>
+                        </div>
+                    </div>
+
                     <div class="card admin-card--accent">
                         <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
                             <h2 class="admin-section-title" style="margin:0;"><i class="fas fa-chart-pie"></i> Lezioni totali (per insegnante)</h2>
@@ -226,7 +285,15 @@
                     <div class="card admin-card--gold">
                         <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
                             <h2 class="admin-section-title" style="margin:0;"><i class="fas fa-money-bill-wave"></i> Stima paga staff</h2>
-                            <input type="search" id="search-staff-pay" placeholder="Cerca insegnante…" oninput="filterStaffPay()" autocomplete="off" style="padding:6px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.07); color:#fff; font-size:0.85rem; min-width:180px;">
+                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+                                <input type="search" id="search-staff-pay" placeholder="Cerca insegnante…" oninput="filterStaffPay()" autocomplete="off" style="padding:6px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.07); color:#fff; font-size:0.85rem; min-width:180px;">
+                                <select id="pay-sheet-teacher-select" style="padding:6px 10px; border-radius:8px; border:1px solid rgba(255,201,87,0.35); background:rgba(255,201,87,0.07); color:#feca57; font-size:0.85rem; font-family:inherit;">
+                                    <option value="all">Tutti gli insegnanti</option>
+                                </select>
+                                <button type="button" onclick="printPaySheet()" class="btn-add" style="background:#feca57; color:#000; font-weight:700; font-size:0.82rem; padding:6px 14px;">
+                                    <i class="fas fa-print"></i> Stampa foglio paga
+                                </button>
+                            </div>
                         </div>
                         <div id="staff-pay-summary" class="admin-stat-chips">
                             <p class="admin-muted-msg">Calcolo… (serve paga staff impostata)</p>

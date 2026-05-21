@@ -368,10 +368,42 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const startMins = timeToMins(selectedTime);
             const endTime = minsToTime(startMins + 45);
+            const slotEnd = startMins + 45;
+
+            // ── Controllo conflitto: lezione già prenotata dall'utente nello stesso slot ──
+            const { data: existingUserBookings } = await window.supabase
+                .from('bookings')
+                .select('id, start_time, end_time, teachers(full_name)')
+                .eq('user_id', currentUser.id)
+                .eq('lesson_date', selectedDate)
+                .neq('status', 'cancelled');
+
+            const conflicting = (existingUserBookings || []).filter(b => {
+                if (b.id === modifyingBookingId) return false; // ignora quella che si sta modificando
+                const bStart = timeToMins(b.start_time);
+                const bEnd   = timeToMins(b.end_time);
+                return startMins < bEnd && slotEnd > bStart; // sovrapposizione
+            });
+
+            if (conflicting.length > 0) {
+                const clash = conflicting[0];
+                const clashTeacher = clash.teachers?.full_name || 'un insegnante';
+                const clashStart   = clash.start_time.slice(0, 5);
+                const clashEnd     = clash.end_time.slice(0, 5);
+                await showModal(
+                    `Hai già una lezione prenotata in questo orario:\n\n${formatDateNice(selectedDate)} · ${clashStart}–${clashEnd} con ${clashTeacher}\n\nScegli un orario diverso.`,
+                    'alert',
+                    'Conflitto orario'
+                );
+                confirmBtn.disabled = false;
+                confirmBtn.innerText = originalText;
+                return;
+            }
+            // ─────────────────────────────────────────────────────────────────────────────
+
             let result;
 
             if (modifyingBookingId) {
-                
                 result = await window.supabase
                     .from('bookings')
                     .update({
@@ -384,7 +416,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     })
                     .eq('id', modifyingBookingId);
             } else {
-                
                 result = await window.supabase
                     .from('bookings')
                     .insert({

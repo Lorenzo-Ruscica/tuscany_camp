@@ -165,7 +165,7 @@ window.showTab = (tabId, el) => {
     if (tab) tab.classList.add('active');
 
     
-    if (tabId === 'accounting') loadAllBookings();
+    if (tabId === 'accounting') { loadAllBookings(); adminBookingInitUsers(); }
     if (tabId === 'messages') loadMessages();
     if (tabId === 'registrations') loadRegistrations();
     if (tabId === 'teachers-mgmt') loadTeachersList();
@@ -338,6 +338,302 @@ window.deleteShift = async (id) => {
     await window.supabase.from('teacher_availability').delete().eq('id', id);
     loadActiveShifts();
 };
+
+// ============================================================
+// ADMIN BOOKING — Prenota lezione per conto di un utente
+// ============================================================
+(function () {
+    // Stato interno del pannello
+    const ab = {
+        userId: null,
+        teacherId: null,
+        teacherPrice: 0,
+        selectedDate: null,
+        selectedTime: null,
+    };
+
+    // Helpers tempo (identici a booking.js)
+    function abTimeToMins(t) { if (!t) return 0; const [h, m] = t.split(':'); return h * 60 + +m; }
+    function abMinsToTime(mins) { return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}:00`; }
+    function abFormatDate(dateStr) {
+        const d = new Date(dateStr + 'T00:00:00');
+        return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+    }
+
+    // ── Step 0: Popola select utenti ────────────────────────────
+    window.adminBookingInitUsers = async () => {
+        const sel = document.getElementById('ab-user-select');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Caricamento...</option>';
+
+        const { data: regs } = await window.supabase
+            .from('registrations')
+            .select('id, user_id, full_name')
+            .order('full_name');
+
+        if (!regs || regs.length === 0) {
+            sel.innerHTML = '<option value="">Nessun utente registrato</option>';
+            return;
+        }
+
+        sel.innerHTML = '<option value="">— Scegli coppia / utente —</option>';
+        regs.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.user_id || r.id;
+            opt.dataset.regId = r.id;
+            opt.textContent = r.full_name;
+            sel.appendChild(opt);
+        });
+    };
+
+    // ── Step 1: Utente selezionato → sblocca select insegnante ──
+    window.adminBookingOnUserChange = () => {
+        const sel = document.getElementById('ab-user-select');
+        ab.userId = sel.value || null;
+        ab.selectedDate = null;
+        ab.selectedTime = null;
+
+        // Reset pannello
+        const teachSel = document.getElementById('ab-teacher-select');
+        teachSel.disabled = !ab.userId;
+
+        document.getElementById('ab-date-group').style.display = 'none';
+        document.getElementById('ab-time-group').style.display = 'none';
+        document.getElementById('ab-confirm-btn').style.display = 'none';
+        document.getElementById('ab-confirm-label').textContent = '';
+
+        if (!ab.userId) return;
+
+        // Popola insegnanti (dalla cache globale)
+        const teachers = window.__allTeachers || [];
+        teachSel.innerHTML = '<option value="">— Scegli insegnante —</option>';
+        teachers.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.dataset.price = t.base_price || 0;
+            opt.textContent = t.full_name;
+            teachSel.appendChild(opt);
+        });
+        teachSel.disabled = false;
+
+        // Abilita prezzo
+        document.getElementById('ab-price').disabled = false;
+    };
+
+    // ── Step 2: Insegnante selezionato → carica date disponibili ─
+    window.adminBookingOnTeacherChange = async () => {
+        const sel = document.getElementById('ab-teacher-select');
+        ab.teacherId = sel.value || null;
+        ab.teacherPrice = parseFloat(sel.selectedOptions[0]?.dataset.price || 0) || 0;
+        ab.selectedDate = null;
+        ab.selectedTime = null;
+
+        document.getElementById('ab-price').value = ab.teacherPrice || '';
+        document.getElementById('ab-date-group').style.display = 'none';
+        document.getElementById('ab-time-group').style.display = 'none';
+        document.getElementById('ab-confirm-btn').style.display = 'none';
+        document.getElementById('ab-confirm-label').textContent = '';
+
+        if (!ab.teacherId) return;
+
+        const datesBox = document.getElementById('ab-dates-container');
+        datesBox.innerHTML = '<span class="admin-muted-msg"><i class="fas fa-spinner fa-spin"></i> Caricamento date…</span>';
+        document.getElementById('ab-date-group').style.display = 'block';
+
+        const { data: avails } = await window.supabase
+            .from('teacher_availability')
+            .select('available_date')
+            .eq('teacher_id', ab.teacherId)
+            .order('available_date', { ascending: true });
+
+        if (!avails || avails.length === 0) {
+            datesBox.innerHTML = '<span class="admin-muted-msg" style="color:#f55394;">Nessuna data disponibile per questo insegnante.</span>';
+            return;
+        }
+
+        const uniqueDates = [...new Set(avails.map(a => a.available_date))];
+        datesBox.innerHTML = '';
+        uniqueDates.forEach(dateStr => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = abFormatDate(dateStr);
+            btn.dataset.date = dateStr;
+            btn.style.cssText = 'padding:6px 14px; border-radius:999px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.05); color:#ddd; cursor:pointer; font-size:0.85rem; font-family:inherit; transition:all 0.15s;';
+            btn.onmouseover = () => { if (!btn.classList.contains('ab-selected')) btn.style.background = 'rgba(0,210,211,0.15)'; };
+            btn.onmouseout = () => { if (!btn.classList.contains('ab-selected')) btn.style.background = 'rgba(255,255,255,0.05)'; };
+            btn.onclick = () => abSelectDate(btn, dateStr);
+            datesBox.appendChild(btn);
+        });
+    };
+
+    // ── Step 3: Data selezionata → carica slot ───────────────────
+    async function abSelectDate(btn, dateStr) {
+        // Deseleziona tutte
+        document.querySelectorAll('#ab-dates-container button').forEach(b => {
+            b.classList.remove('ab-selected');
+            b.style.background = 'rgba(255,255,255,0.05)';
+            b.style.color = '#ddd';
+            b.style.borderColor = 'rgba(255,255,255,0.2)';
+        });
+        btn.classList.add('ab-selected');
+        btn.style.background = 'var(--admin-cyan)';
+        btn.style.color = '#000';
+        btn.style.borderColor = 'var(--admin-cyan)';
+
+        ab.selectedDate = dateStr;
+        ab.selectedTime = null;
+        document.getElementById('ab-confirm-btn').style.display = 'none';
+        document.getElementById('ab-confirm-label').textContent = '';
+
+        const slotsBox = document.getElementById('ab-slots-container');
+        slotsBox.innerHTML = '<span class="admin-muted-msg"><i class="fas fa-spinner fa-spin"></i> Caricamento slot…</span>';
+        document.getElementById('ab-time-group').style.display = 'block';
+
+        // Carica turni + prenotazioni esistenti in parallelo
+        const [{ data: shifts }, { data: taken }] = await Promise.all([
+            window.supabase.from('teacher_availability').select('*').eq('teacher_id', ab.teacherId).eq('available_date', dateStr),
+            window.supabase.from('bookings').select('id, start_time, end_time').eq('teacher_id', ab.teacherId).eq('lesson_date', dateStr).neq('status', 'cancelled'),
+        ]);
+
+        slotsBox.innerHTML = '';
+
+        if (!shifts || shifts.length === 0) {
+            slotsBox.innerHTML = '<span class="admin-muted-msg">Nessun turno disponibile in questa data.</span>';
+            return;
+        }
+
+        shifts.forEach(shift => abGenerateSlots(shift.start_hour, shift.end_hour, taken || [], slotsBox));
+    }
+
+    function abGenerateSlots(startStr, endStr, takenBookings, container) {
+        let current = abTimeToMins(startStr);
+        const shiftEnd = abTimeToMins(endStr);
+        const duration = 45;
+        let hasSlots = false;
+
+        while (current + duration <= shiftEnd) {
+            hasSlots = true;
+            const timeStr = abMinsToTime(current);
+            const slotStart = current;
+            const slotEnd = current + duration;
+
+            const isTaken = takenBookings.some(b => {
+                const bS = abTimeToMins(b.start_time);
+                const bE = abTimeToMins(b.end_time);
+                return slotStart < bE && slotEnd > bS;
+            });
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = timeStr.slice(0, 5);
+            btn.dataset.time = timeStr;
+
+            if (isTaken) {
+                btn.style.cssText = 'padding:6px 14px; border-radius:8px; border:1px solid rgba(255,83,148,0.3); background:rgba(255,83,148,0.08); color:#666; cursor:not-allowed; font-size:0.85rem; font-family:inherit;';
+                btn.disabled = true;
+                btn.title = 'Slot già occupato';
+            } else {
+                btn.style.cssText = 'padding:6px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.05); color:#ddd; cursor:pointer; font-size:0.85rem; font-family:inherit; transition:all 0.15s;';
+                btn.onmouseover = () => { if (!btn.classList.contains('ab-sel-time')) btn.style.background = 'rgba(0,210,211,0.15)'; };
+                btn.onmouseout = () => { if (!btn.classList.contains('ab-sel-time')) btn.style.background = 'rgba(255,255,255,0.05)'; };
+                btn.onclick = () => abSelectTime(btn, timeStr);
+            }
+
+            container.appendChild(btn);
+            current += duration;
+        }
+
+        if (!hasSlots) {
+            container.innerHTML += '<span class="admin-muted-msg">Nessuno slot generato per questo turno.</span>';
+        }
+    }
+
+    // ── Step 4: Orario selezionato ───────────────────────────────
+    function abSelectTime(btn, timeStr) {
+        document.querySelectorAll('#ab-slots-container button:not(:disabled)').forEach(b => {
+            b.classList.remove('ab-sel-time');
+            b.style.background = 'rgba(255,255,255,0.05)';
+            b.style.color = '#ddd';
+            b.style.borderColor = 'rgba(255,255,255,0.2)';
+        });
+        btn.classList.add('ab-sel-time');
+        btn.style.background = 'var(--admin-cyan)';
+        btn.style.color = '#000';
+        btn.style.borderColor = 'var(--admin-cyan)';
+
+        ab.selectedTime = timeStr;
+
+        const price = parseFloat(document.getElementById('ab-price').value) || ab.teacherPrice;
+        const endTime = abMinsToTime(abTimeToMins(timeStr) + 45).slice(0, 5);
+        document.getElementById('ab-confirm-btn').style.display = 'inline-flex';
+        document.getElementById('ab-confirm-label').textContent =
+            `${abFormatDate(ab.selectedDate)} · ${timeStr.slice(0,5)}–${endTime} · € ${price}`;
+    }
+
+    // ── Step 5: Conferma prenotazione ────────────────────────────
+    window.adminBookingConfirm = async () => {
+        const btn = document.getElementById('ab-confirm-btn');
+        const userSel = document.getElementById('ab-user-select');
+
+        if (!ab.userId || !ab.teacherId || !ab.selectedDate || !ab.selectedTime) {
+            alert('Compila tutti i campi prima di confermare.');
+            return;
+        }
+
+        const price = parseFloat(document.getElementById('ab-price').value);
+        if (isNaN(price) || price < 0) {
+            alert('Inserisci un prezzo valido.');
+            return;
+        }
+
+        const endTime = abMinsToTime(abTimeToMins(ab.selectedTime) + 45);
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvataggio…';
+
+        const { error } = await window.supabase.from('bookings').insert({
+            user_id: ab.userId,
+            teacher_id: ab.teacherId,
+            lesson_date: ab.selectedDate,
+            start_time: ab.selectedTime,
+            end_time: endTime,
+            lesson_price: price,
+            lesson_type: 'private',
+            status: 'confirmed',
+            admin_notes: 'Prenotato da Admin',
+        });
+
+        if (error) {
+            alert('Errore: ' + error.message);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Conferma prenotazione';
+            return;
+        }
+
+        btn.innerHTML = '<i class="fas fa-check"></i> Prenotato!';
+        btn.style.background = '#00b89c';
+        document.getElementById('ab-confirm-label').textContent = '✓ Lezione inserita con successo';
+
+        // Reset dopo 2 secondi
+        setTimeout(() => {
+            ab.userId = null; ab.teacherId = null; ab.selectedDate = null; ab.selectedTime = null;
+            document.getElementById('ab-user-select').value = '';
+            document.getElementById('ab-teacher-select').innerHTML = '<option value="">Seleziona prima l\'utente…</option>';
+            document.getElementById('ab-teacher-select').disabled = true;
+            document.getElementById('ab-price').value = '';
+            document.getElementById('ab-price').disabled = true;
+            document.getElementById('ab-date-group').style.display = 'none';
+            document.getElementById('ab-time-group').style.display = 'none';
+            btn.style.display = 'none';
+            btn.style.background = '';
+            btn.innerHTML = '<i class="fas fa-check"></i> Conferma prenotazione';
+            btn.disabled = false;
+            document.getElementById('ab-confirm-label').textContent = '';
+            // Ricarica contabilità
+            loadAllBookings();
+        }, 2000);
+    };
+})();
 
 
 window.loadSchedule = async () => {
@@ -2304,44 +2600,84 @@ function timeToMinutes(timeStr) {
 
 
 function updateStaffPay(bookings) {
-    const staffStats = {};
+    // Struttura dettagliata per insegnante: private + speciali separate
+    const staffDetail = {};
 
-    
     (window.__allTeachers || []).forEach(t => {
-        staffStats[t.full_name] = 0;
+        staffDetail[t.full_name] = {
+            private: { count: 0, pay: 0 },
+            group:   { count: 0, pay: 0 },
+            lecture: { count: 0, pay: 0 },
+            other:   { count: 0, pay: 0 },
+        };
     });
 
     bookings.forEach(b => {
-        
         if (b.status === 'cancelled') return;
-
-        
         if (b.lesson_type === 'break') return;
 
         const teacher = b.teachers ? b.teachers.full_name : null;
         if (!teacher) return;
 
-        
-        let pay = 0;
-
-        
-        if (b.staff_pay !== null && b.staff_pay !== undefined) {
-            pay = parseFloat(b.staff_pay);
+        if (!staffDetail[teacher]) {
+            staffDetail[teacher] = {
+                private: { count: 0, pay: 0 },
+                group:   { count: 0, pay: 0 },
+                lecture: { count: 0, pay: 0 },
+                other:   { count: 0, pay: 0 },
+            };
         }
-        
-        else if (b.teachers.pay_rate > 0) {
+
+        let pay = 0;
+        if (b.staff_pay !== null && b.staff_pay !== undefined) {
+            pay = parseFloat(b.staff_pay) || 0;
+        } else if (b.teachers?.pay_rate > 0) {
             pay = parseFloat(b.teachers.pay_rate);
         }
 
-        if (!staffStats[teacher]) staffStats[teacher] = 0;
-        staffStats[teacher] += pay;
+        const type = b.lesson_type || 'private';
+        if (type === 'private' || !type) {
+            staffDetail[teacher].private.count++;
+            staffDetail[teacher].private.pay += pay;
+        } else if (type === 'group') {
+            staffDetail[teacher].group.count++;
+            staffDetail[teacher].group.pay += pay;
+        } else if (type === 'lecture') {
+            staffDetail[teacher].lecture.count++;
+            staffDetail[teacher].lecture.pay += pay;
+        } else {
+            staffDetail[teacher].other.count++;
+            staffDetail[teacher].other.pay += pay;
+        }
     });
 
-    
-    window.__staffPayData = Object.entries(staffStats)
+    // Salva dettaglio globale per stampa
+    window.__staffPayDetail = staffDetail;
+
+    // Totale per chip UI
+    window.__staffPayData = Object.entries(staffDetail)
+        .map(([name, d]) => [
+            name,
+            d.private.pay + d.group.pay + d.lecture.pay + d.other.pay
+        ])
         .sort((a, b) => b[1] - a[1]);
 
     renderStaffPay();
+    updatePaySheetTeacherSelect();
+}
+
+function updatePaySheetTeacherSelect() {
+    const sel = document.getElementById('pay-sheet-teacher-select');
+    if (!sel) return;
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="all">Tutti gli insegnanti</option>';
+    (window.__allTeachers || []).forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.full_name;
+        opt.textContent = t.full_name;
+        sel.appendChild(opt);
+    });
+    if (currentVal) sel.value = currentVal;
 }
 
 function renderStaffPay() {
@@ -2363,7 +2699,7 @@ function renderStaffPay() {
         badge.className = 'admin-stat-chip admin-stat-chip--pay';
         badge.innerHTML = `
             <div class="admin-stat-chip__label">${name}</div>
-            <div class="admin-stat-chip__value">€ ${totalPay}</div>
+            <div class="admin-stat-chip__value">€ ${totalPay.toFixed(2)}</div>
         `;
         container.appendChild(badge);
     });
@@ -2371,8 +2707,113 @@ function renderStaffPay() {
 
 window.filterStaffPay = () => renderStaffPay();
 
+// ============================================================
+// STAMPA FOGLIO PAGA INSEGNANTE
+// ============================================================
+window.printPaySheet = () => {
+    const detail = window.__staffPayDetail || {};
+    const selVal = document.getElementById('pay-sheet-teacher-select')?.value || 'all';
 
+    let teachersToPrint = Object.keys(detail);
+    if (selVal !== 'all') teachersToPrint = [selVal];
 
+    if (teachersToPrint.length === 0) {
+        alert('Nessun dato disponibile. Assicurati di essere nella sezione Contabilità con i dati caricati.');
+        return;
+    }
+
+    const today = new Date().toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    const buildTeacherBlock = (name) => {
+        const d = detail[name];
+        if (!d) return '';
+
+        const privateTotal  = d.private.pay;
+        const groupTotal    = d.group.pay;
+        const lectureTotal  = d.lecture.pay;
+        const otherTotal    = d.other.pay;
+        const specialTotal  = groupTotal + lectureTotal + otherTotal;
+        const grandTotal    = privateTotal + specialTotal;
+
+        let specialRows = '';
+        if (d.group.count > 0)   specialRows += `<tr><td>Group lesson</td><td style="text-align:center;">${d.group.count}</td><td style="text-align:right;">€ ${groupTotal.toFixed(2)}</td></tr>`;
+        if (d.lecture.count > 0) specialRows += `<tr><td>Lecture</td><td style="text-align:center;">${d.lecture.count}</td><td style="text-align:right;">€ ${lectureTotal.toFixed(2)}</td></tr>`;
+        if (d.other.count > 0)   specialRows += `<tr><td>Altro</td><td style="text-align:center;">${d.other.count}</td><td style="text-align:right;">€ ${otherTotal.toFixed(2)}</td></tr>`;
+        if (!specialRows)         specialRows = `<tr><td colspan="3" style="color:#aaa;font-style:italic;text-align:center;font-size:12px;">Nessuna lezione speciale</td></tr>`;
+
+        return `<div class="page">
+          <div class="header">
+            <div><div class="camp-title">TUSCANY CAMP 2026</div><div class="camp-sub">Foglio Paga Staff</div></div>
+            <div style="text-align:right;font-size:12px;color:#555;">Data: <strong>${today}</strong></div>
+          </div>
+          <div class="teacher-name">${name}</div>
+
+          <div class="sec-title">Lezioni Private</div>
+          <table>
+            <thead><tr><th>Tipo</th><th style="text-align:center;width:110px;">N° lezioni</th><th style="text-align:right;width:130px;">Importo</th></tr></thead>
+            <tbody>
+              <tr><td>Lezioni private</td><td style="text-align:center;">${d.private.count}</td><td style="text-align:right;">€ ${privateTotal.toFixed(2)}</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sec-title" style="margin-top:22px;">Lezioni Speciali (Group / Lecture)</div>
+          <table>
+            <thead><tr><th>Tipo</th><th style="text-align:center;width:110px;">N° sessioni</th><th style="text-align:right;width:130px;">Importo</th></tr></thead>
+            <tbody>
+              ${specialRows}
+              <tr class="subtotal"><td colspan="2">Totale lezioni speciali</td><td style="text-align:right;">€ ${specialTotal.toFixed(2)}</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sec-title" style="margin-top:22px;">Travel Expenses</div>
+          <table>
+            <tbody>
+              <tr style="height:40px;"><td>Spese di viaggio</td><td style="text-align:center;width:110px;">—</td><td style="text-align:right;width:130px;border-bottom:1px solid #444;">€ ___________</td></tr>
+              <tr style="height:10px;"><td colspan="3" style="font-size:11px;color:#888;font-style:italic;">Note / dettaglio spese (compilare a penna)</td></tr>
+              <tr><td colspan="3" style="border-bottom:1px solid #bbb;height:36px;"></td></tr>
+              <tr><td colspan="3" style="border-bottom:1px solid #bbb;height:36px;"></td></tr>
+            </tbody>
+          </table>
+        </div>`;
+    };
+
+    const blocks = teachersToPrint.map((name, i) => {
+        const block = buildTeacherBlock(name);
+        return i < teachersToPrint.length - 1 ? block + '<div class="page-break"></div>' : block;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
+<title>Foglio Paga — Tuscany Camp 2026</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:14px;color:#222;background:#fff}
+.page{max-width:700px;margin:0 auto;padding:40px 50px}
+.page-break{page-break-after:always;height:0;margin:0}
+.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1a1a2e;padding-bottom:14px;margin-bottom:26px}
+.camp-title{font-size:22px;font-weight:900;letter-spacing:.08em;color:#1a1a2e}
+.camp-sub{font-size:12px;color:#666;letter-spacing:.12em;text-transform:uppercase;margin-top:4px}
+.teacher-name{font-size:20px;font-weight:700;color:#1a1a2e;border-left:5px solid #e84393;padding-left:14px;margin-bottom:22px}
+.sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;color:#e84393;margin-bottom:7px}
+table{width:100%;border-collapse:collapse;margin-bottom:0}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#555;font-weight:600;border-bottom:2px solid #1a1a2e;padding:6px 8px}
+td{padding:10px 8px;border-bottom:1px solid #e8e8e8;font-size:13px}
+.subtotal td{font-weight:700;border-top:2px solid #1a1a2e;border-bottom:2px solid #1a1a2e;background:#f7f7f7}
+.grand-total{display:flex;justify-content:space-between;align-items:center;background:#1a1a2e;color:#fff;padding:14px 18px;border-radius:6px;margin-top:26px;font-size:16px;font-weight:900;letter-spacing:.04em}
+.sigs{display:flex;gap:24px;margin-top:48px}
+.sig{flex:1;text-align:center}
+.sig-line{border-bottom:1.5px solid #333;height:44px;margin-bottom:8px}
+.sig-label{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#666}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{padding:20px 30px}}
+</style></head>
+<body>${blocks}
+<script>window.onload=()=>{setTimeout(()=>window.print(),200)}<\/script>
+</body></html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=750');
+    if (!w) { alert('Pop-up bloccato dal browser. Consenti i pop-up per questo sito e riprova.'); return; }
+    w.document.write(html);
+    w.document.close();
+};
 
 window.loadGlobalSettings = async () => {
     
