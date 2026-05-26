@@ -81,6 +81,11 @@
                     <i class="fas fa-edit"></i> Editor testi sito
                 </a>
 
+                <p class="nav-section-label">Gestione Camp</p>
+                <button type="button" class="nav-btn nav-btn--danger" data-tab="fine-camp" onclick="showTab('fine-camp', this)">
+                    <i class="fas fa-flag-checkered"></i> Fine Camp
+                </button>
+
                 <p class="nav-section-label">Esci</p>
                 <a href="index.html" class="nav-btn nav-btn--home">
                     <i class="fas fa-home"></i> Torna al sito
@@ -708,6 +713,123 @@
                 </div>
             </div>
 
+            <!-- ══════════════════════════════════════════════ -->
+            <!-- TAB: FINE CAMP                                -->
+            <!-- ══════════════════════════════════════════════ -->
+            <div id="tab-fine-camp" class="tab-content">
+                <header class="admin-page-head">
+                    <h1 class="admin-page-title" style="color:#e74c3c;"><i class="fas fa-flag-checkered"></i> Fine Camp — Reset &amp; Archivio</h1>
+                    <p class="admin-page-desc">Esporta tutti i dati in un archivio ZIP prima di resettare. Le eliminazioni sono <strong style="color:#e74c3c;">permanenti e irreversibili</strong>.</p>
+                </header>
+
+                <!-- EXPORT BOX -->
+                <div class="card fine-camp-export-card">
+                    <div class="fine-camp-export-inner">
+                        <div>
+                            <h2 class="admin-section-title" style="color:var(--admin-cyan); margin-bottom:0.35rem;">
+                                <i class="fas fa-file-archive"></i> Backup completo (ZIP)
+                            </h2>
+                            <p class="admin-page-desc" style="max-width:none;">Scarica un archivio ZIP con tutti i dati del Camp: prenotazioni, insegnanti, iscritti, turni, messaggi.</p>
+                        </div>
+                        <button type="button" id="btn-export-zip" class="btn-add btn-add--cyan fine-camp-zip-btn" onclick="exportCampZip()">
+                            <i class="fas fa-download"></i> Scarica ZIP
+                        </button>
+                    </div>
+                    <div id="export-zip-progress" style="display:none; margin-top:1rem;">
+                        <div class="admin-progress-track"><div id="export-zip-bar" class="admin-progress-bar" style="background:var(--admin-cyan);"></div></div>
+                        <p id="export-zip-label" class="admin-progress-label">Preparazione dati...</p>
+                    </div>
+                </div>
+
+                <!-- SEZIONI SINGOLE -->
+                <h3 class="subsection-title">Elimina sezioni singole</h3>
+                <div class="fine-camp-grid">
+
+                    <div class="fine-camp-card">
+                        <div class="fine-camp-card__icon" style="background:rgba(245,83,148,0.12); color:var(--color-hot-pink);"><i class="fas fa-calendar-check"></i></div>
+                        <div class="fine-camp-card__body">
+                            <strong>Prenotazioni</strong>
+                            <span id="count-bookings">— lezioni</span>
+                        </div>
+                        <button type="button" class="btn-add fine-camp-del-btn" onclick="deleteSection('bookings')">
+                            <i class="fas fa-trash"></i> Elimina
+                        </button>
+                    </div>
+
+                    <div class="fine-camp-card">
+                        <div class="fine-camp-card__icon" style="background:rgba(0,210,211,0.1); color:var(--admin-cyan);"><i class="fas fa-clock"></i></div>
+                        <div class="fine-camp-card__body">
+                            <strong>Turni insegnanti</strong>
+                            <span id="count-availability">— turni</span>
+                        </div>
+                        <button type="button" class="btn-add fine-camp-del-btn" onclick="deleteSection('teacher_availability')">
+                            <i class="fas fa-trash"></i> Elimina
+                        </button>
+                    </div>
+
+                    <div class="fine-camp-card">
+                        <div class="fine-camp-card__icon" style="background:rgba(254,202,87,0.1); color:#feca57;"><i class="fas fa-chalkboard-teacher"></i></div>
+                        <div class="fine-camp-card__body">
+                            <strong>Insegnanti</strong>
+                            <span id="count-teachers">— insegnanti</span>
+                        </div>
+                        <button type="button" class="btn-add fine-camp-del-btn" onclick="deleteSection('teachers')">
+                            <i class="fas fa-trash"></i> Elimina
+                        </button>
+                    </div>
+
+                    <div class="fine-camp-card">
+                        <div class="fine-camp-card__icon" style="background:rgba(84,160,255,0.1); color:#54a0ff;"><i class="fas fa-users"></i></div>
+                        <div class="fine-camp-card__body">
+                            <strong>Iscritti (Entry Form)</strong>
+                            <span id="count-registrations">— iscritti</span>
+                        </div>
+                        <button type="button" class="btn-add fine-camp-del-btn" onclick="deleteSection('registrations')">
+                            <i class="fas fa-trash"></i> Elimina
+                        </button>
+                    </div>
+
+                    <div class="fine-camp-card">
+                        <div class="fine-camp-card__icon" style="background:rgba(255,255,255,0.05); color:#aaa;"><i class="fas fa-envelope"></i></div>
+                        <div class="fine-camp-card__body">
+                            <strong>Messaggi contatti</strong>
+                            <span id="count-messages">— messaggi</span>
+                        </div>
+                        <button type="button" class="btn-add fine-camp-del-btn" onclick="deleteSection('contact_messages')">
+                            <i class="fas fa-trash"></i> Elimina
+                        </button>
+                    </div>
+
+                    <div class="fine-camp-card">
+                        <div class="fine-camp-card__icon" style="background:rgba(255,255,255,0.05); color:#aaa;"><i class="fas fa-lock"></i></div>
+                        <div class="fine-camp-card__body">
+                            <strong>Pagamenti segnati</strong>
+                            <span>localStorage</span>
+                        </div>
+                        <button type="button" class="btn-add fine-camp-del-btn" onclick="clearLocalPaidFlags()">
+                            <i class="fas fa-broom"></i> Pulisci
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- RESET TOTALE -->
+                <div class="card fine-camp-nuclear-card">
+                    <div class="fine-camp-nuclear-inner">
+                        <div>
+                            <h2 class="admin-section-title" style="color:#e74c3c; margin-bottom:0.35rem;">
+                                <i class="fas fa-radiation"></i> Reset totale del Camp
+                            </h2>
+                            <p class="admin-page-desc" style="max-width:none;">Elimina in un'unica operazione: prenotazioni, turni insegnanti, iscritti e messaggi. Gli insegnanti rimangono. <strong style="color:#e74c3c;">Azione irreversibile.</strong></p>
+                        </div>
+                        <button type="button" class="fine-camp-nuclear-btn" onclick="resetAllCamp()">
+                            <i class="fas fa-radiation"></i> RESET TOTALE
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- ══ fine tab-fine-camp ══ -->
+
         </main>
     </div>
 
@@ -789,6 +911,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="javascript/config.js"></script>
     <script src="javascript/admin.js"></script>
 

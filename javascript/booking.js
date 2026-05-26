@@ -278,40 +278,50 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         confirmBtn.style.display = 'none';
 
+        // Remove any previous conflict banner
+        const oldBanner = document.getElementById('slot-conflict-banner');
+        if (oldBanner) oldBanner.remove();
+
         timeGroup.style.opacity = '1';
         timeGroup.style.pointerEvents = 'all';
         slotsContainer.innerHTML = '<div class="slot-placeholder">Loading slots...</div>';
 
-        const { data: shifts } = await window.supabase
-            .from('teacher_availability')
-            .select('*')
-            .eq('teacher_id', selectedTeacherId)
-            .eq('available_date', dateStr);
+        // Fetch teacher shifts, taken slots AND user's own bookings for that day — in parallel
+        const [{ data: shifts }, { data: takenSlots }, { data: mySlots }] = await Promise.all([
+            window.supabase
+                .from('teacher_availability')
+                .select('*')
+                .eq('teacher_id', selectedTeacherId)
+                .eq('available_date', dateStr),
+            window.supabase
+                .from('bookings')
+                .select('id, start_time, end_time')
+                .eq('teacher_id', selectedTeacherId)
+                .eq('lesson_date', dateStr)
+                .neq('status', 'cancelled'),
+            window.supabase
+                .from('bookings')
+                .select('id, start_time, end_time, teachers(full_name)')
+                .eq('user_id', currentUser.id)
+                .eq('lesson_date', dateStr)
+                .neq('status', 'cancelled'),
+        ]);
 
-        let query = window.supabase
-            .from('bookings')
-            .select('id, start_time, end_time') 
-            .eq('teacher_id', selectedTeacherId)
-            .eq('lesson_date', dateStr)
-            .neq('status', 'cancelled');
-
-        const { data: takenSlots } = await query;
-
-        
-        const takenBookings = takenSlots.filter(b => b.id !== modifyingBookingId);
+        const takenBookings   = (takenSlots || []).filter(b => b.id !== modifyingBookingId);
+        const myBookingsToday = (mySlots   || []).filter(b => b.id !== modifyingBookingId);
 
         slotsContainer.innerHTML = '';
-        if (shifts.length === 0) {
+        if (!shifts || shifts.length === 0) {
             slotsContainer.innerHTML = 'No slots.';
             return;
         }
 
         shifts.forEach(shift => {
-            generateTimeSlots(shift.start_hour, shift.end_hour, takenBookings);
+            generateTimeSlots(shift.start_hour, shift.end_hour, takenBookings, myBookingsToday);
         });
     }
 
-    function generateTimeSlots(startStr, endStr, takenBookings) {
+    function generateTimeSlots(startStr, endStr, takenBookings, myBookingsToday = []) {
         let current = timeToMins(startStr);
         const shiftEnd = timeToMins(endStr);
         const duration = 45;
@@ -321,11 +331,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const slotStart = current;
             const slotEnd = current + duration;
 
-            
             const isTaken = takenBookings.some(b => {
                 const bStart = timeToMins(b.start_time);
-                const bEnd = timeToMins(b.end_time);
-                
+                const bEnd   = timeToMins(b.end_time);
+                return slotStart < bEnd && slotEnd > bStart;
+            });
+
+            // Check if this slot conflicts with the user's OWN bookings (different teacher same time)
+            const myConflict = myBookingsToday.find(b => {
+                const bStart = timeToMins(b.start_time);
+                const bEnd   = timeToMins(b.end_time);
                 return slotStart < bEnd && slotEnd > bStart;
             });
 
@@ -335,6 +350,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (isTaken) {
                 btn.classList.add('taken');
+            } else if (myConflict) {
+                // Slot is free for the teacher but clashes with user's own schedule
+                btn.classList.add('user-conflict');
+                const conflictTeacher = myConflict.teachers?.full_name || 'another teacher';
+                const cs = myConflict.start_time.slice(0, 5);
+                const ce = myConflict.end_time.slice(0, 5);
+                btn.title = `⚠️ You already have a lesson ${cs}–${ce} with ${conflictTeacher}`;
+                btn.onclick = () => selectSlot(btn, timeString, myConflict);
             } else {
                 if (modifyingBookingId && timeString === selectedTime.substring(0, 5) + ":00") {
                     btn.classList.add('selected');
@@ -348,10 +371,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    function selectSlot(btn, time) {
+    function selectSlot(btn, time, myConflict = null) {
         document.querySelectorAll('.time-slot.selected').forEach(el => el.classList.remove('selected'));
         btn.classList.add('selected');
         selectedTime = time;
+
+        // Remove old conflict banner
+        const oldBanner = document.getElementById('slot-conflict-banner');
+        if (oldBanner) oldBanner.remove();
+
+        if (myConflict) {
+            // Show inline warning banner
+            const cs = myConflict.start_time.slice(0, 5);
+            const ce = myConflict.end_time.slice(0, 5);
+            const ct = myConflict.teachers?.full_name || 'another teacher';
+            const banner = document.createElement('div');
+            banner.id = 'slot-conflict-banner';
+            banner.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Schedule conflict!</strong>
+                You already have a lesson <strong>${cs}–${ce}</strong> with <strong>${ct}</strong> on this day.
+                Confirming this booking will create an overlap — consider choosing a different time.
+            `;
+            slotsContainer.after(banner);
+        }
 
         confirmBtn.style.display = 'block';
         confirmBtn.innerHTML = modifyingBookingId ?
@@ -387,14 +430,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (conflicting.length > 0) {
                 const clash = conflicting[0];
-                const clashTeacher = clash.teachers?.full_name || 'un insegnante';
+                const clashTeacher = clash.teachers?.full_name || 'a teacher';
                 const clashStart   = clash.start_time.slice(0, 5);
                 const clashEnd     = clash.end_time.slice(0, 5);
-                await showModal(
-                    `Hai già una lezione prenotata in questo orario:\n\n${formatDateNice(selectedDate)} · ${clashStart}–${clashEnd} con ${clashTeacher}\n\nScegli un orario diverso.`,
-                    'alert',
-                    'Conflitto orario'
-                );
+                modalTitle.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#ff9f43;"></i> Schedule Conflict';
+                modalMessage.innerHTML = `
+                    <div style="background:rgba(255,159,67,0.12); border:1px solid rgba(255,159,67,0.4); border-radius:10px; padding:14px 16px; margin-bottom:10px; text-align:left;">
+                        <div style="font-weight:700; color:#ff9f43; margin-bottom:6px;">⚠️ You already have a lesson at this time:</div>
+                        <div style="color:#ddd; font-size:0.95rem;">
+                            📅 <strong>${formatDateNice(selectedDate)}</strong><br>
+                            🕐 <strong>${clashStart} – ${clashEnd}</strong><br>
+                            👤 with <strong>${clashTeacher}</strong>
+                        </div>
+                    </div>
+                    <div style="color:#aaa; font-size:0.88rem;">Please select a different time slot to avoid the overlap.</div>
+                `;
+                modalOverlay.style.display = 'flex';
+                const newConfirmBtn = document.getElementById('modal-btn-confirm');
+                const newCancelBtn  = document.getElementById('modal-btn-cancel');
+                if (newCancelBtn) newCancelBtn.style.display = 'none';
+                if (newConfirmBtn) {
+                    newConfirmBtn.textContent = 'Choose another slot';
+                    newConfirmBtn.onclick = () => { modalOverlay.style.display = 'none'; };
+                }
                 confirmBtn.disabled = false;
                 confirmBtn.innerText = originalText;
                 return;

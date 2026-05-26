@@ -225,6 +225,177 @@ body.admin-app {
     color: var(--admin-text);
 }
 
+.nav-btn.nav-btn--danger {
+    color: #e74c3c;
+    border-color: rgba(231, 76, 60, 0.35);
+}
+
+.nav-btn.nav-btn--danger:hover,
+.nav-btn.nav-btn--danger.active {
+    background: rgba(231, 76, 60, 0.12);
+    color: #ff6b6b;
+    border-color: rgba(231, 76, 60, 0.55);
+}
+
+/* ── Fine Camp section ───────────────────────────────────────── */
+.fine-camp-export-card {
+    border: 1px solid rgba(0, 210, 211, 0.3) !important;
+    margin-bottom: 2rem;
+}
+
+.fine-camp-export-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.fine-camp-zip-btn {
+    background: linear-gradient(135deg, var(--admin-cyan, #00d2d3), #00a8a9) !important;
+    color: #000 !important;
+    font-weight: 700 !important;
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 0.65rem 1.4rem !important;
+}
+
+.fine-camp-zip-btn:hover {
+    filter: brightness(1.1);
+}
+
+/* Progress bar */
+.admin-progress-track {
+    background: rgba(255,255,255,0.07);
+    border-radius: 999px;
+    height: 8px;
+    overflow: hidden;
+}
+
+.admin-progress-bar {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    transition: width 0.4s ease;
+    background: var(--admin-cyan, #00d2d3);
+}
+
+.admin-progress-label {
+    margin: 0.4rem 0 0;
+    font-size: 0.8rem;
+    color: var(--admin-muted);
+    text-align: center;
+}
+
+/* Section grid */
+.fine-camp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.fine-camp-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--admin-surface-2);
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius-sm);
+    padding: 1rem 1.15rem;
+    transition: border-color 0.2s ease;
+}
+
+.fine-camp-card:hover {
+    border-color: var(--admin-border-strong);
+}
+
+.fine-camp-card__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.fine-camp-card__body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.fine-camp-card__body strong {
+    font-size: 0.9rem;
+    color: var(--admin-text);
+}
+
+.fine-camp-card__body span {
+    font-size: 0.78rem;
+    color: var(--admin-muted);
+}
+
+.fine-camp-del-btn {
+    background: rgba(231, 76, 60, 0.12) !important;
+    color: #e74c3c !important;
+    border: 1px solid rgba(231, 76, 60, 0.35) !important;
+    font-size: 0.78rem !important;
+    padding: 0.4rem 0.85rem !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.fine-camp-del-btn:hover {
+    background: rgba(231, 76, 60, 0.22) !important;
+    border-color: rgba(231, 76, 60, 0.6) !important;
+    color: #ff6b6b !important;
+}
+
+/* Nuclear reset card */
+.fine-camp-nuclear-card {
+    border: 1px solid rgba(231, 76, 60, 0.4) !important;
+    background: rgba(231, 76, 60, 0.05) !important;
+}
+
+.fine-camp-nuclear-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.fine-camp-nuclear-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 0.7rem 1.5rem;
+    font-weight: 700;
+    font-size: 0.88rem;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.35);
+    transition: filter 0.2s ease, transform 0.15s ease;
+}
+
+.fine-camp-nuclear-btn:hover {
+    filter: brightness(1.12);
+    transform: translateY(-1px);
+}
+
+.fine-camp-nuclear-btn:active {
+    transform: translateY(0);
+}
+
+
  
 .content {
     flex: 1;
@@ -523,6 +694,66 @@ body.admin-app {
 .admin-stat-chip--pay .admin-stat-chip__value {
     color: #feca57;
 }
+
+/* ── Clickable staff pay chips ─────────────────────────────── */
+.staff-pay-chip {
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.25s ease, border-color 0.25s ease;
+    user-select: none;
+    border: 1px solid rgba(254, 202, 87, 0.25);
+}
+
+.staff-pay-chip:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(254, 202, 87, 0.15);
+    border-color: rgba(254, 202, 87, 0.5);
+}
+
+.staff-pay-chip__badge {
+    margin-top: 0.45rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(254, 202, 87, 0.5);
+    transition: color 0.25s ease;
+}
+
+.staff-pay-chip:hover .staff-pay-chip__badge {
+    color: #feca57;
+}
+
+/* ── PAID state ──────────────────────────────────────────────── */
+.staff-pay-chip--paid {
+    background: rgba(0, 210, 110, 0.12) !important;
+    border-color: rgba(0, 210, 110, 0.45) !important;
+}
+
+.staff-pay-chip--paid:hover {
+    box-shadow: 0 6px 20px rgba(0, 210, 110, 0.18);
+    border-color: rgba(0, 210, 110, 0.65) !important;
+}
+
+.staff-pay-chip--paid .admin-stat-chip__label {
+    color: #00d26e;
+}
+
+.staff-pay-chip--paid .admin-stat-chip__value {
+    color: #00d26e !important;
+    text-decoration: line-through;
+    opacity: 0.75;
+}
+
+.staff-pay-chip--paid .staff-pay-chip__badge {
+    color: #00d26e;
+    font-size: 0.75rem;
+}
+
+.staff-pay-chip--paid:hover .staff-pay-chip__badge {
+    color: #ff6b6b;
+}
+
 
 .admin-muted-msg {
     margin: 0;
@@ -858,6 +1089,20 @@ body.admin-app {
     font-weight: bold;
 }
 
+/* Free / empty slot rows */
+.free-slot-row td {
+    background: repeating-linear-gradient(
+        -45deg,
+        #f9f9f9,
+        #f9f9f9 4px,
+        #fff 4px,
+        #fff 10px
+    );
+    border-style: dashed;
+    color: #999 !important;
+    font-style: italic;
+}
+
 .print-footer {
     margin-top: 3rem;
     text-align: center;
@@ -866,6 +1111,7 @@ body.admin-app {
     border-top: 1px solid #ccc;
     padding-top: 0.75rem;
 }
+
 
  
 .modal-overlay {
@@ -1334,4 +1580,62 @@ input:checked + .slider:before {
         border: none;
         overflow: visible;
     }
+}
+
+/* ── Teacher dashboard: conflict warning banner ─────────────── */
+.teacher-conflict-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.5);
+    border-left: 4px solid #e74c3c;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin: 8px 0 14px;
+    color: #f5b7b1;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    animation: bannerFadeIn 0.4s ease;
+}
+
+.teacher-conflict-banner i.fa-exclamation-triangle {
+    color: #e74c3c;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.teacher-conflict-banner strong {
+    color: #e74c3c;
+    font-size: 1rem;
+}
+
+.teacher-conflict-banner span {
+    color: #f5b7b1;
+}
+
+/* ── Individual conflicting card badge ──────────────────────── */
+.teacher-conflict-card-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #e74c3c;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+}
+
+.teacher-conflict-card-badge i {
+    font-size: 0.75rem;
+}
+
+@keyframes bannerFadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
 }

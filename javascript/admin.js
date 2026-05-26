@@ -646,36 +646,125 @@ window.loadSchedule = async () => {
     document.getElementById('sheet-teacher-name').innerText = teacherName;
     document.getElementById('sheet-date').innerText = "Data: " + date.split('-').reverse().join('/');
 
-    const { data: bookings, error } = await window.supabase
-        .from('bookings')
-        .select('*, registrations(full_name)')
-        .eq('teacher_id', teacherId)
-        .eq('lesson_date', date)
-        .neq('status', 'cancelled')
-        .order('start_time');
-
     const tbody = document.getElementById('schedule-body');
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center"><i class="fas fa-spinner fa-spin"></i> Caricamento…</td></tr>';
+
+    // Fetch shifts AND bookings in parallel
+    const [{ data: shifts }, { data: bookings }] = await Promise.all([
+        window.supabase
+            .from('teacher_availability')
+            .select('*')
+            .eq('teacher_id', teacherId)
+            .eq('available_date', date)
+            .order('start_hour'),
+        window.supabase
+            .from('bookings')
+            .select('*, registrations(full_name)')
+            .eq('teacher_id', teacherId)
+            .eq('lesson_date', date)
+            .neq('status', 'cancelled')
+            .order('start_time'),
+    ]);
+
     tbody.innerHTML = '';
 
-    if (!bookings || bookings.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Nessuna lezione.</td></tr>';
+    if (!shifts || shifts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Nessun turno impostato per questo giorno.</td></tr>';
         return;
     }
 
-    bookings.forEach(b => {
-        let coupleName = "Utente non trovato";
-        if (b.registrations && b.registrations.full_name) coupleName = b.registrations.full_name;
-        else if (b.user_id) coupleName = "ID: " + b.user_id.slice(0, 5);
+    // Helper: "HH:MM" or "HH:MM:SS" → minutes since midnight
+    function toMins(t) {
+        if (!t) return 0;
+        const [h, m] = t.split(':');
+        return parseInt(h, 10) * 60 + parseInt(m, 10);
+    }
+    function fmtTime(mins) {
+        return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+    }
 
-        tbody.innerHTML += `
-            <tr>
-                <td>${b.start_time.slice(0, 5)} - ${b.end_time.slice(0, 5)}</td>
-                <td><strong>${coupleName}</strong></td>
-                <td>${b.admin_notes || 'Sala A'}</td>
-                <td></td>
-            </tr>`;
+    const SLOT_DURATION = 45; // minutes
+
+    // Build a map: slotStartMins → booking object (if any)
+    const bookingMap = {};
+    (bookings || []).forEach(b => {
+        const key = toMins(b.start_time);
+        bookingMap[key] = b;
     });
+
+    // Track which minutes are "covered" by a booking (to skip mid-booking slots)
+    const coveredRanges = (bookings || []).map(b => ({
+        start: toMins(b.start_time),
+        end:   toMins(b.end_time),
+    }));
+
+    function isCoveredMidSlot(slotStart) {
+        // Returns true if slotStart falls inside a booking but is NOT the booking's start
+        return coveredRanges.some(r => slotStart > r.start && slotStart < r.end);
+    }
+
+    let rowsAdded = 0;
+
+    shifts.forEach(shift => {
+        const shiftStart = toMins(shift.start_hour);
+        const shiftEnd   = toMins(shift.end_hour);
+
+        let cursor = shiftStart;
+
+        while (cursor < shiftEnd) {
+            // Skip minutes that fall inside the middle of a longer booking
+            if (isCoveredMidSlot(cursor)) {
+                cursor += SLOT_DURATION;
+                continue;
+            }
+
+            const booking = bookingMap[cursor];
+
+            if (booking) {
+                // ── Booked slot ─────────────────────────────────────────
+                let coupleName = "Utente non trovato";
+                if (booking.registrations?.full_name) coupleName = booking.registrations.full_name;
+                else if (booking.user_id) coupleName = "ID: " + booking.user_id.slice(0, 5);
+
+                const isSpecialClass = booking.lesson_type === 'lecture' || booking.lesson_type === 'group lesson';
+                const displayCouple  = isSpecialClass ? booking.lesson_type.toUpperCase() : coupleName;
+                const displayRoom    = isSpecialClass ? 'Hall 1st Floor' : (booking.admin_notes || 'Sala A');
+
+                const bookingDuration = toMins(booking.end_time) - toMins(booking.start_time);
+                const slotEnd = fmtTime(toMins(booking.end_time));
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${fmtTime(cursor)} - ${slotEnd}</td>
+                        <td><strong>${displayCouple}</strong></td>
+                        <td>${displayRoom}</td>
+                        <td></td>
+                    </tr>`;
+
+                cursor = toMins(booking.end_time);
+            } else {
+                // ── Free slot ────────────────────────────────────────────
+                const slotEnd = Math.min(cursor + SLOT_DURATION, shiftEnd);
+                tbody.innerHTML += `
+                    <tr class="free-slot-row">
+                        <td style="color:#aaa;">${fmtTime(cursor)} - ${fmtTime(slotEnd)}</td>
+                        <td style="color:#bbb; font-style:italic; letter-spacing:0.03em;">— Libero —</td>
+                        <td style="color:#aaa;"></td>
+                        <td></td>
+                    </tr>`;
+
+                cursor += SLOT_DURATION;
+            }
+
+            rowsAdded++;
+        }
+    });
+
+    if (rowsAdded === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Nessuno slot nel turno.</td></tr>';
+    }
 };
+
 
 window.downloadPDF = () => {
     if (typeof html2pdf === 'undefined') {
@@ -2694,18 +2783,55 @@ function renderStaffPay() {
         return;
     }
 
+    // Load paid state from localStorage
+    const paidTeachers = JSON.parse(localStorage.getItem('tc_paid_teachers') || '{}');
+
     data.forEach(([name, totalPay]) => {
-        const badge = document.createElement('div');
-        badge.className = 'admin-stat-chip admin-stat-chip--pay';
-        badge.innerHTML = `
+        const isPaid = !!paidTeachers[name];
+
+        const chip = document.createElement('div');
+        chip.className = 'admin-stat-chip admin-stat-chip--pay staff-pay-chip' + (isPaid ? ' staff-pay-chip--paid' : '');
+        chip.title = isPaid ? 'Clicca per annullare il pagamento' : 'Clicca per segnare come PAGATO';
+        chip.dataset.teacher = name;
+        chip.innerHTML = `
             <div class="admin-stat-chip__label">${name}</div>
             <div class="admin-stat-chip__value">€ ${totalPay.toFixed(2)}</div>
+            <div class="staff-pay-chip__badge">${isPaid ? '✓ Pagato' : 'Segna pagato'}</div>
         `;
-        container.appendChild(badge);
+
+        chip.addEventListener('click', () => {
+            const current = JSON.parse(localStorage.getItem('tc_paid_teachers') || '{}');
+            if (current[name]) {
+                delete current[name];
+            } else {
+                current[name] = { paidAt: new Date().toISOString(), amount: totalPay };
+            }
+            localStorage.setItem('tc_paid_teachers', JSON.stringify(current));
+            renderStaffPay();
+        });
+
+        container.appendChild(chip);
     });
+
+    // ── Reset button (shown only when at least one is paid) ──────────
+    const anyPaid = data.some(([name]) => !!paidTeachers[name]);
+    if (anyPaid) {
+        const resetBtn = document.createElement('button');
+        resetBtn.type = 'button';
+        resetBtn.className = 'btn-cancel btn-add--sm';
+        resetBtn.style.cssText = 'margin-top:0.5rem; width:100%; font-size:0.78rem;';
+        resetBtn.innerHTML = '<i class="fas fa-undo"></i> Azzera tutti i pagamenti';
+        resetBtn.onclick = () => {
+            if (!confirm('Sei sicuro di voler azzerare tutti i pagamenti segnati?')) return;
+            localStorage.removeItem('tc_paid_teachers');
+            renderStaffPay();
+        };
+        container.appendChild(resetBtn);
+    }
 }
 
 window.filterStaffPay = () => renderStaffPay();
+
 
 // ============================================================
 // STAMPA FOGLIO PAGA INSEGNANTE
@@ -3354,4 +3480,220 @@ window.sendNewsletter = async (isTest) => {
     alert(`Completato!\nInviate con successo: ${successCount}\nErrori: ${failCount}`);
     btnAll.disabled = false;
     progressContainer.style.display = 'none';
-};  
+};
+
+
+// ============================================================
+// FINE CAMP — EXPORT ZIP + RESET
+// ============================================================
+
+// ── Helpers ──────────────────────────────────────────────────
+function toCSV(rows) {
+    if (!rows || rows.length === 0) return 'No data\n';
+    const headers = Object.keys(rows[0]);
+    const lines = [headers.join(',')];
+    rows.forEach(row => {
+        const vals = headers.map(h => {
+            const v = row[h] === null || row[h] === undefined ? '' : String(row[h]);
+            return '"' + v.replace(/"/g, '""') + '"';
+        });
+        lines.push(vals.join(','));
+    });
+    return lines.join('\n');
+}
+
+function setZipProgress(pct, label) {
+    const bar   = document.getElementById('export-zip-bar');
+    const lbl   = document.getElementById('export-zip-label');
+    const wrap  = document.getElementById('export-zip-progress');
+    if (wrap) wrap.style.display = 'block';
+    if (bar)  bar.style.width = pct + '%';
+    if (lbl)  lbl.textContent = label;
+}
+
+// ── Load counts when tab opens ────────────────────────────────
+window.loadFineCampCounts = async () => {
+    const tables = [
+        { id: 'count-bookings',     table: 'bookings',             label: 'lezioni'    },
+        { id: 'count-availability', table: 'teacher_availability',  label: 'turni'      },
+        { id: 'count-teachers',     table: 'teachers',              label: 'insegnanti' },
+        { id: 'count-registrations',table: 'registrations',         label: 'iscritti'   },
+        { id: 'count-messages',     table: 'contact_messages',      label: 'messaggi'   },
+    ];
+    for (const t of tables) {
+        const el = document.getElementById(t.id);
+        if (!el) continue;
+        try {
+            const { count } = await window.supabase
+                .from(t.table)
+                .select('*', { count: 'exact', head: true });
+            el.textContent = `${count ?? '?'} ${t.label}`;
+        } catch {
+            el.textContent = '— (errore)';
+        }
+    }
+};
+
+// Auto-load counts when Fine Camp tab becomes active
+const _origShowTab = window.showTab;
+window.showTab = (tabName, btn) => {
+    _origShowTab(tabName, btn);
+    if (tabName === 'fine-camp') window.loadFineCampCounts();
+};
+
+// ── Export ZIP ────────────────────────────────────────────────
+window.exportCampZip = async () => {
+    if (typeof JSZip === 'undefined') {
+        return alert('Libreria JSZip non caricata. Ricarica la pagina.');
+    }
+
+    const btn = document.getElementById('btn-export-zip');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Esportazione...'; }
+
+    try {
+        const zip  = new JSZip();
+        const camp = zip.folder('TuscanyСamp_Backup_' + new Date().toISOString().slice(0, 10));
+
+        const steps = [
+            { name: 'bookings.csv',              table: 'bookings',            select: '*, teachers(full_name), registrations(full_name)' },
+            { name: 'teachers.csv',              table: 'teachers',            select: '*' },
+            { name: 'teacher_availability.csv',  table: 'teacher_availability',select: '*, teachers(full_name)' },
+            { name: 'registrations.csv',         table: 'registrations',       select: '*' },
+            { name: 'contact_messages.csv',      table: 'contact_messages',    select: '*' },
+        ];
+
+        for (let i = 0; i < steps.length; i++) {
+            const s = steps[i];
+            setZipProgress(Math.round((i / steps.length) * 85), `Caricamento ${s.table}…`);
+            const { data } = await window.supabase.from(s.table).select(s.select).limit(10000);
+            camp.file(s.name, toCSV(data || []));
+        }
+
+        // localStorage paid flags
+        const paidFlags = localStorage.getItem('tc_paid_teachers') || '{}';
+        camp.file('pagamenti_segnati.json', paidFlags);
+
+        // README
+        camp.file('README.txt',
+            `Tuscany Camp — Backup\nGenerato il: ${new Date().toLocaleString('it-IT')}\n\n` +
+            `Contenuto:\n` +
+            `  bookings.csv            — prenotazioni lezioni\n` +
+            `  teachers.csv            — anagrafica insegnanti\n` +
+            `  teacher_availability.csv— turni insegnanti\n` +
+            `  registrations.csv       — iscritti entry form\n` +
+            `  contact_messages.csv    — messaggi dal sito\n` +
+            `  pagamenti_segnati.json  — pagamenti staff segnati\n`
+        );
+
+        setZipProgress(95, 'Compressione in corso…');
+        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+        setZipProgress(100, 'Download avviato!');
+
+        // Trigger download
+        const url  = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href     = url;
+        link.download = `TuscanyСamp_Backup_${new Date().toISOString().slice(0, 10)}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        setTimeout(() => {
+            const wrap = document.getElementById('export-zip-progress');
+            if (wrap) wrap.style.display = 'none';
+        }, 3000);
+
+    } catch (err) {
+        alert('Errore durante l\'esportazione: ' + err.message);
+        console.error(err);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Scarica ZIP'; }
+    }
+};
+
+// ── Delete single section ─────────────────────────────────────
+const SECTION_LABELS = {
+    bookings:             'tutte le prenotazioni lezioni',
+    teacher_availability: 'tutti i turni degli insegnanti',
+    teachers:             'tutti gli insegnanti (e le loro prenotazioni)',
+    registrations:        'tutti gli iscritti al Camp',
+    contact_messages:     'tutti i messaggi di contatto',
+};
+
+window.deleteSection = async (table) => {
+    const label = SECTION_LABELS[table] || table;
+    const keyword = 'ELIMINA';
+
+    const typed = prompt(
+        `⚠️ ATTENZIONE — operazione irreversibile!\n\n` +
+        `Stai per eliminare: ${label.toUpperCase()}\n\n` +
+        `Digita "${keyword}" per confermare:`
+    );
+    if (typed !== keyword) {
+        if (typed !== null) alert('Testo non corretto. Operazione annullata.');
+        return;
+    }
+
+    try {
+        const { error } = await window.supabase.from(table).delete().neq('id', -1);
+        if (error) throw error;
+        alert(`✓ ${label} eliminat${label.endsWith('i') ? 'i' : 'a'} con successo.`);
+        window.loadFineCampCounts();
+    } catch (err) {
+        alert('Errore: ' + err.message);
+        console.error(err);
+    }
+};
+
+// ── Clear localStorage paid flags ─────────────────────────────
+window.clearLocalPaidFlags = () => {
+    if (!confirm('Vuoi cancellare i pagamenti staff segnati in questo browser?')) return;
+    localStorage.removeItem('tc_paid_teachers');
+    alert('✓ Pagamenti segnati azzerati.');
+};
+
+// ── Nuclear reset (all except teachers) ──────────────────────
+window.resetAllCamp = async () => {
+    const keyword = 'RESET CAMP';
+    const typed = prompt(
+        `🚨 RESET TOTALE — operazione irreversibile!\n\n` +
+        `Verranno eliminati:\n` +
+        `  • Tutte le prenotazioni\n` +
+        `  • Tutti i turni insegnanti\n` +
+        `  • Tutti gli iscritti\n` +
+        `  • Tutti i messaggi\n\n` +
+        `Gli insegnanti NON vengono eliminati.\n\n` +
+        `Digita "${keyword}" per confermare:`
+    );
+    if (typed !== keyword) {
+        if (typed !== null) alert('Testo non corretto. Operazione annullata.');
+        return;
+    }
+
+    const confirm2 = confirm('Ultima conferma: vuoi davvero resettare tutto il Camp?');
+    if (!confirm2) return;
+
+    const tablesToReset = ['bookings', 'teacher_availability', 'registrations', 'contact_messages'];
+    const results = [];
+
+    for (const table of tablesToReset) {
+        try {
+            const { error } = await window.supabase.from(table).delete().neq('id', -1);
+            results.push({ table, ok: !error, msg: error?.message });
+        } catch (e) {
+            results.push({ table, ok: false, msg: e.message });
+        }
+    }
+
+    localStorage.removeItem('tc_paid_teachers');
+
+    const failed = results.filter(r => !r.ok);
+    if (failed.length > 0) {
+        alert('Reset parziale completato. Errori:\n' + failed.map(f => `${f.table}: ${f.msg}`).join('\n'));
+    } else {
+        alert('✓ Reset totale completato con successo. Il Camp è pronto per una nuova edizione!');
+    }
+
+    window.loadFineCampCounts();
+};
