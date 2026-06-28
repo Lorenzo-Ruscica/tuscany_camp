@@ -1,0 +1,28 @@
+name: Supabase Keep-Alive Ping
+
+on:
+  schedule:
+    # Ogni 3 giorni alle 06:00 UTC (08:00 ora italiana)
+    - cron: '0 6 */3 * *'
+  workflow_dispatch: # Permette di lanciarlo manualmente dal pannello GitHub Actions
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase RPC keep_alive()
+        run: |
+          echo "🏓 Pinging Supabase to prevent free-tier pause..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/keep_alive" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          
+          if [ "$RESPONSE" -eq 200 ]; then
+            echo "✅ Supabase is alive! HTTP $RESPONSE"
+          else
+            echo "❌ Ping failed with HTTP $RESPONSE"
+            exit 1
+          fi
