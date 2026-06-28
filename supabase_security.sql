@@ -113,16 +113,16 @@ CREATE POLICY "anon_read_settings" ON public.site_settings
     FOR SELECT USING (true);
 
 -- ────────────────────────────────────────────────────────────
--- 8. RLS — TABELLA: contacts
+-- 8. RLS — TABELLA: contact_messages
 -- ────────────────────────────────────────────────────────────
-ALTER TABLE public.contacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contact_messages ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "admin_all_contacts" ON public.contacts;
-CREATE POLICY "admin_all_contacts" ON public.contacts
+DROP POLICY IF EXISTS "admin_all_contacts" ON public.contact_messages;
+CREATE POLICY "admin_all_contacts" ON public.contact_messages
     FOR ALL USING (public.is_admin());
 
-DROP POLICY IF EXISTS "anyone_insert_contacts" ON public.contacts;
-CREATE POLICY "anyone_insert_contacts" ON public.contacts
+DROP POLICY IF EXISTS "anyone_insert_contacts" ON public.contact_messages;
+CREATE POLICY "anyone_insert_contacts" ON public.contact_messages
     FOR INSERT WITH CHECK (true);
 
 -- ────────────────────────────────────────────────────────────

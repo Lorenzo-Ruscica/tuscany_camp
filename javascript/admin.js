@@ -3487,18 +3487,19 @@ window.sendNewsletter = async (isTest) => {
 // ============================================================
 
 // ── Helpers ──────────────────────────────────────────────────
-function toCSV(rows) {
-    if (!rows || rows.length === 0) return 'No data\n';
-    const headers = Object.keys(rows[0]);
-    const lines = [headers.join(',')];
+function toCSVGeneric(headers, mapper, rows) {
+    if (!rows) return '\ufeff' + headers.join(';') + '\n';
+    const BOM = '\ufeff';
+    const headerLine = headers.join(';');
+    const lines = [headerLine];
     rows.forEach(row => {
-        const vals = headers.map(h => {
-            const v = row[h] === null || row[h] === undefined ? '' : String(row[h]);
-            return '"' + v.replace(/"/g, '""') + '"';
+        const vals = mapper(row).map(v => {
+            const str = v === null || v === undefined ? '' : String(v);
+            return '"' + str.replace(/"/g, '""') + '"';
         });
-        lines.push(vals.join(','));
+        lines.push(vals.join(';'));
     });
-    return lines.join('\n');
+    return BOM + lines.join('\n');
 }
 
 function setZipProgress(pct, label) {
@@ -3517,7 +3518,7 @@ window.loadFineCampCounts = async () => {
         { id: 'count-availability', table: 'teacher_availability',  label: 'turni'      },
         { id: 'count-teachers',     table: 'teachers',              label: 'insegnanti' },
         { id: 'count-registrations',table: 'registrations',         label: 'iscritti'   },
-        { id: 'count-messages',     table: 'contact_messages',      label: 'messaggi'   },
+        { id: 'count-messages',     table: 'contacts',              label: 'messaggi'   },
     ];
     for (const t of tables) {
         const el = document.getElementById(t.id);
@@ -3540,7 +3541,7 @@ window.showTab = (tabName, btn) => {
     if (tabName === 'fine-camp') window.loadFineCampCounts();
 };
 
-// ── Export ZIP ────────────────────────────────────────────────
+// ── Export ZIP con Report HTML ─────────────────────────────────
 window.exportCampZip = async () => {
     if (typeof JSZip === 'undefined') {
         return alert('Libreria JSZip non caricata. Ricarica la pagina.');
@@ -3550,41 +3551,902 @@ window.exportCampZip = async () => {
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Esportazione...'; }
 
     try {
+        console.log("🚀 INIZIO ESPORTAZIONE BACKUP ZIP");
         const zip  = new JSZip();
-        const camp = zip.folder('TuscanyСamp_Backup_' + new Date().toISOString().slice(0, 10));
+        const folderName = 'TuscanyCamp_Backup_' + new Date().toISOString().slice(0, 10);
+        const camp = zip.folder(folderName);
 
-        const steps = [
-            { name: 'bookings.csv',              table: 'bookings',            select: '*, teachers(full_name), registrations(full_name)' },
-            { name: 'teachers.csv',              table: 'teachers',            select: '*' },
-            { name: 'teacher_availability.csv',  table: 'teacher_availability',select: '*, teachers(full_name)' },
-            { name: 'registrations.csv',         table: 'registrations',       select: '*' },
-            { name: 'contact_messages.csv',      table: 'contact_messages',    select: '*' },
-        ];
+        // 1. Carica i dati in sequenza con log di debug per diagnosticare blocchi
+        setZipProgress(10, 'Caricamento prenotazioni…');
+        console.log("1/5 Richiesta bookings...");
+        const resBookings = await window.supabase.from('bookings').select('*, teachers(full_name, pay_rate), registrations(full_name)').limit(20000);
+        if (resBookings.error) console.warn("Attenzione errore bookings:", resBookings.error);
+        const bookings = (resBookings.data || []).filter(x => x);
+        console.log(`-> Caricati ${bookings.length} bookings`);
 
-        for (let i = 0; i < steps.length; i++) {
-            const s = steps[i];
-            setZipProgress(Math.round((i / steps.length) * 85), `Caricamento ${s.table}…`);
-            const { data } = await window.supabase.from(s.table).select(s.select).limit(10000);
-            camp.file(s.name, toCSV(data || []));
-        }
+        setZipProgress(15, 'Caricamento insegnanti…');
+        console.log("2/5 Richiesta teachers...");
+        const resTeachers = await window.supabase.from('teachers').select('*').limit(2000);
+        if (resTeachers.error) console.warn("Attenzione errore teachers:", resTeachers.error);
+        const teachers = (resTeachers.data || []).filter(x => x);
+        console.log(`-> Caricati ${teachers.length} teachers`);
+
+        setZipProgress(20, 'Caricamento disponibilità…');
+        console.log("3/5 Richiesta availability...");
+        const resAvailability = await window.supabase.from('teacher_availability').select('*, teachers(full_name)').limit(5000);
+        if (resAvailability.error) console.warn("Attenzione errore availability:", resAvailability.error);
+        const availability = (resAvailability.data || []).filter(x => x);
+        console.log(`-> Caricati ${availability.length} availability`);
+
+        setZipProgress(25, 'Caricamento iscritti…');
+        console.log("4/5 Richiesta registrations...");
+        const resRegs = await window.supabase.from('registrations').select('*').limit(5000);
+        if (resRegs.error) console.warn("Attenzione errore registrations:", resRegs.error);
+        const registrations = (resRegs.data || []).filter(x => x);
+        console.log(`-> Caricati ${registrations.length} registrations`);
+
+        setZipProgress(30, 'Caricamento messaggi contatti…');
+        console.log("5/5 Richiesta contacts...");
+        const resMsgs = await window.supabase.from('contacts').select('*').limit(5000);
+        if (resMsgs.error) console.warn("Attenzione errore contacts:", resMsgs.error);
+        const messages = (resMsgs.data || []).filter(x => x);
+        console.log(`-> Caricati ${messages.length} messages`);
+
+        const paidFlagsRaw = localStorage.getItem('tc_paid_teachers') || '{}';
+        const paidFlags = JSON.parse(paidFlagsRaw);
+        console.log("Dati caricati completati con successo.");
+
+        // 2. Generazione CSV formattati in Italiano
+        setZipProgress(40, 'Generazione file CSV…');
+
+        // CSV Bookings
+        const csvBookingsData = toCSVGeneric(
+            ['ID', 'Nome Cliente', 'Nome Insegnante', 'Data Lezione', 'Ora Inizio', 'Ora Fine', 'Prezzo (€)', 'Tipo Lezione', 'Stato', 'Paga Staff (€)', 'Note Admin', 'Data Prenotazione'],
+            (row) => [
+                row.id,
+                row.registrations ? row.registrations.full_name : (row.user_id || ''),
+                row.teachers ? row.teachers.full_name : '',
+                row.lesson_date,
+                row.start_time ? row.start_time.slice(0, 5) : '',
+                row.end_time ? row.end_time.slice(0, 5) : '',
+                row.lesson_price !== null && row.lesson_price !== undefined ? row.lesson_price : '',
+                row.lesson_type || 'private',
+                row.status || 'confirmed',
+                row.staff_pay !== null && row.staff_pay !== undefined ? row.staff_pay : '',
+                row.admin_notes || '',
+                row.created_at ? new Date(row.created_at).toLocaleString('it-IT') : ''
+            ],
+            bookings
+        );
+        camp.file('1_prenotazioni_lezioni.csv', csvBookingsData);
+
+        // CSV Teachers
+        const csvTeachersData = toCSVGeneric(
+            ['ID', 'Nome Insegnante', 'Email', 'Paga Oraria Staff (€)', 'Prezzo Base Lezione (€)', 'Creato il'],
+            (row) => [
+                row.id,
+                row.full_name || '',
+                row.email || '',
+                row.pay_rate !== null && row.pay_rate !== undefined ? row.pay_rate : '',
+                row.base_price !== null && row.base_price !== undefined ? row.base_price : '',
+                row.created_at ? new Date(row.created_at).toLocaleString('it-IT') : ''
+            ],
+            teachers
+        );
+        camp.file('2_insegnanti.csv', csvTeachersData);
+
+        // CSV Availability
+        const csvAvailData = toCSVGeneric(
+            ['ID', 'Insegnante', 'Data Disponibilita', 'Ora Inizio', 'Ora Fine'],
+            (row) => [
+                row.id,
+                row.teachers ? row.teachers.full_name : (row.teacher_id || ''),
+                row.available_date || '',
+                row.start_hour ? row.start_hour.slice(0, 5) : '',
+                row.end_hour ? row.end_hour.slice(0, 5) : ''
+            ],
+            availability
+        );
+        camp.file('3_turni_disponibilita.csv', csvAvailData);
+
+        // CSV Registrations
+        const csvRegsData = toCSVGeneric(
+            ['ID', 'Email', 'Nome Completo', 'Ruolo', 'Telefono', 'Citta', 'Nazione', 'Importo Totale (€)', 'Note', 'Data Registrazione'],
+            (row) => [
+                row.id,
+                row.email || '',
+                row.full_name || '',
+                row.role || '',
+                row.phone || '',
+                row.city || '',
+                row.country || '',
+                row.total_amount !== null && row.total_amount !== undefined ? row.total_amount : '',
+                row.notes || '',
+                row.created_at ? new Date(row.created_at).toLocaleString('it-IT') : ''
+            ],
+            registrations
+        );
+        camp.file('4_iscritti_camp.csv', csvRegsData);
+
+        // CSV Contact Messages (contacts)
+        const csvMsgsData = toCSVGeneric(
+            ['ID', 'Nome', 'Email', 'Oggetto', 'Messaggio', 'Letto', 'Data Ricezione'],
+            (row) => [
+                row.id,
+                row.name || '',
+                row.email || '',
+                row.subject || '',
+                row.message || '',
+                row.is_read ? 'Sì' : 'No',
+                row.created_at ? new Date(row.created_at).toLocaleString('it-IT') : ''
+            ],
+            messages
+        );
+        camp.file('5_messaggi_contatti.csv', csvMsgsData);
 
         // localStorage paid flags
-        const paidFlags = localStorage.getItem('tc_paid_teachers') || '{}';
-        camp.file('pagamenti_segnati.json', paidFlags);
+        camp.file('pagamenti_insegnanti_segnati.json', paidFlagsRaw);
+
+        // 3. Generazione Report HTML Leggibile con lo stile "Tuscany Camp" originale
+        setZipProgress(70, 'Creazione report interattivo HTML…');
+
+        // Elaborazione aggregati insegnanti per il report
+        const teacherStats = {};
+        teachers.forEach(t => {
+            teacherStats[t.id] = {
+                name: t.full_name,
+                email: t.email,
+                pay_rate: t.pay_rate || 0,
+                private_count: 0,
+                group_count: 0,
+                lecture_count: 0,
+                break_count: 0,
+                other_count: 0,
+                total_pay: 0,
+                paid: paidFlags[t.full_name] ? 'Sì' : 'No'
+            };
+        });
+
+        bookings.forEach(b => {
+            if (b.status === 'cancelled') return;
+            const tid = b.teacher_id;
+            if (!tid) return;
+
+            if (!teacherStats[tid]) {
+                teacherStats[tid] = {
+                    name: b.teachers ? b.teachers.full_name : 'Insegnante ' + tid.slice(0, 5),
+                    email: '-',
+                    pay_rate: 0,
+                    private_count: 0,
+                    group_count: 0,
+                    lecture_count: 0,
+                    break_count: 0,
+                    other_count: 0,
+                    total_pay: 0,
+                    paid: '-'
+                };
+            }
+
+            let pay = 0;
+            if (b.staff_pay !== null && b.staff_pay !== undefined) {
+                pay = parseFloat(b.staff_pay) || 0;
+            } else if (b.teachers?.pay_rate > 0) {
+                pay = parseFloat(b.teachers.pay_rate) || 0;
+            }
+
+            const type = b.lesson_type || 'private';
+            if (type === 'private') {
+                teacherStats[tid].private_count++;
+                teacherStats[tid].total_pay += pay;
+            } else if (type === 'group') {
+                teacherStats[tid].group_count++;
+                teacherStats[tid].total_pay += pay;
+            } else if (type === 'lecture') {
+                teacherStats[tid].lecture_count++;
+                teacherStats[tid].total_pay += pay;
+            } else if (type === 'break') {
+                teacherStats[tid].break_count++;
+            } else {
+                teacherStats[tid].other_count++;
+                teacherStats[tid].total_pay += pay;
+            }
+        });
+
+        // Elaborazione iscritti per il report
+        const registrationStats = {};
+        registrations.forEach(r => {
+            const isPaid = (window.__paidRegistrations && window.__paidRegistrations.includes(r.id)) || r.payment_status === 'paid' || r.payment_status === 'Saldato';
+            registrationStats[r.user_id || r.id] = {
+                name: r.full_name,
+                email: r.user_email || r.email || '',
+                phone: r.phone,
+                role: r.role,
+                package: r.package || '—',
+                city: r.city,
+                country: r.country,
+                total_amount: r.total_amount || 0,
+                is_paid: isPaid ? 'Saldato' : 'Da saldare',
+                notes: r.notes || '',
+                booking_count: 0
+            };
+        });
+
+        bookings.forEach(b => {
+            if (b.status === 'cancelled') return;
+            const uid = b.user_id;
+            if (uid && registrationStats[uid]) {
+                registrationStats[uid].booking_count++;
+            }
+        });
+
+        // Generazione del file HTML
+        const htmlReport = `<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tuscany Camp 2026 — Report Offline</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --admin-bg: #0a0a0b;
+            --admin-surface: rgba(255, 255, 255, 0.04);
+            --admin-surface-2: #151518;
+            --admin-border: rgba(255, 255, 255, 0.09);
+            --admin-border-strong: rgba(245, 83, 148, 0.35);
+            --admin-cyan: #00d2d3;
+            --admin-text: #f0f0f2;
+            --admin-muted: #8b8b96;
+            --admin-sidebar-w: 280px;
+            --accent: #F55394;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--admin-bg);
+            color: var(--admin-text);
+            line-height: 1.5;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Gradient background circles */
+        .bg-gradient-shapes {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(ellipse 120% 80% at 100% -20%, rgba(245, 83, 148, 0.1), transparent 50%),
+                radial-gradient(ellipse 80% 60% at 0% 100%, rgba(0, 210, 211, 0.06), transparent 45%),
+                var(--admin-bg);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--admin-sidebar-w);
+            background: linear-gradient(180deg, #060607 0%, #0e0e12 100%);
+            border-right: 1px solid var(--admin-border);
+            padding: 1.5rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid var(--admin-border);
+            margin-bottom: 1.5rem;
+        }
+
+        .brand-title {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: linear-gradient(to right, #fff, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-subtitle {
+            font-size: 0.75rem;
+            color: var(--admin-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-top: 0.2rem;
+        }
+
+        .menu-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            padding: 0.75rem 1rem;
+            color: var(--admin-muted);
+            text-decoration: none;
+            border-radius: 10px;
+            font-size: 0.92rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .menu-item:hover, .menu-item.active {
+            color: #fff;
+            background: var(--admin-surface);
+        }
+
+        .menu-item.active {
+            border-left: 3px solid var(--accent);
+            border-radius: 0 10px 10px 0;
+            background: rgba(245, 83, 148, 0.08);
+            color: var(--accent);
+        }
+
+        .menu-item i {
+            width: 18px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        /* Content Area */
+        .content {
+            flex-grow: 1;
+            padding: 2.25rem;
+            overflow-y: auto;
+            height: 100%;
+            position: relative;
+        }
+
+        .page-head {
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 2.2rem;
+            font-weight: 600;
+            margin-bottom: 0.35rem;
+        }
+
+        .page-desc {
+            color: var(--admin-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Stats Dashboard */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.25rem;
+        }
+
+        .card {
+            background: var(--admin-surface);
+            border: 1px solid var(--admin-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent);
+            border-radius: 16px 0 0 16px;
+        }
+
+        .card.cyan::after { background: var(--admin-cyan); }
+        .card.gold::after { background: #feca57; }
+        .card.green::after { background: #1dd1a1; }
+
+        .card-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--admin-muted);
+            letter-spacing: 0.05em;
+        }
+
+        .card-val {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-top: 0.25rem;
+            font-family: 'Playfair Display', Georgia, serif;
+        }
+
+        /* Tables & Lists */
+        .section-card {
+            margin-bottom: 2.5rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.5rem;
+            color: #fff;
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-wrapper i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--admin-muted);
+            font-size: 0.85rem;
+        }
+
+        .search-input {
+            padding: 7px 12px 7px 32px;
+            border-radius: 10px;
+            border: 1px solid var(--admin-border);
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 0.85rem;
+            outline: none;
+            width: 240px;
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent);
+            background: rgba(255,255,255,0.08);
+            box-shadow: 0 0 10px rgba(245, 83, 148, 0.2);
+        }
+
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--admin-border);
+            background: var(--admin-surface-2);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: rgba(255,255,255,0.02);
+            color: #fff;
+            font-weight: 600;
+            padding: 1rem;
+            border-bottom: 1px solid var(--admin-border);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--admin-border);
+            color: var(--admin-text);
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255,255,255,0.01);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge.private { background: rgba(0, 210, 211, 0.12); color: var(--admin-cyan); border: 1px solid rgba(0, 210, 211, 0.2); }
+        .badge.group { background: rgba(245, 83, 148, 0.12); color: var(--accent); border: 1px solid rgba(245, 83, 148, 0.2); }
+        .badge.lecture { background: rgba(108, 92, 231, 0.12); color: #a29bfe; border: 1px solid rgba(108, 92, 231, 0.2); }
+        .badge.break { background: rgba(255, 255, 255, 0.08); color: var(--admin-muted); border: 1px solid var(--admin-border); }
+
+        .badge.yes { background: rgba(29, 209, 161, 0.12); color: #1dd1a1; border: 1px solid rgba(29, 209, 161, 0.2); }
+        .badge.no { background: rgba(235, 94, 85, 0.12); color: #ff6b6b; border: 1px solid rgba(235, 94, 85, 0.2); }
+
+        /* Panels */
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+            animation: fadeIn 0.25s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient-shapes"></div>
+
+    <!-- Sidebar fissa come nell'admin originale -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="brand-title">Tuscany Camp</div>
+            <div class="brand-subtitle">Report Offline 2026</div>
+        </div>
+        <ul class="menu-list">
+            <li><a class="menu-item active" onclick="switchPanel('panel-dashboard', this)"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+            <li><a class="menu-item" onclick="switchPanel('panel-bookings', this)"><i class="fas fa-calendar-check"></i> Registro Lezioni</a></li>
+            <li><a class="menu-item" onclick="switchPanel('panel-teachers', this)"><i class="fas fa-user-tie"></i> Insegnanti &amp; Paga</a></li>
+            <li><a class="menu-item" onclick="switchPanel('panel-registrations', this)"><i class="fas fa-users"></i> Iscritti Camp</a></li>
+            <li><a class="menu-item" onclick="switchPanel('panel-messages', this)"><i class="fas fa-envelope"></i> Messaggi Ricevuti</a></li>
+        </ul>
+    </div>
+
+    <!-- Contenuto principale -->
+    <div class="content">
+        
+        <!-- DASHBOARD TAB -->
+        <div id="panel-dashboard" class="tab-panel active">
+            <div class="page-head">
+                <h2 class="page-title">Panoramica Generale</h2>
+                <p class="page-desc">Report aggregato delle attività del camp.</p>
+            </div>
+            
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-label">Lezioni Totali</div>
+                    <div class="card-val">${bookings.filter(b => b.status !== 'cancelled' && b.lesson_type !== 'break').length}</div>
+                    <p style="font-size: 0.8rem; color: var(--admin-muted); margin-top: 0.25rem;">Escluse cancellate e break</p>
+                </div>
+                <div class="card cyan">
+                    <div class="card-label">Coppie / Iscritti</div>
+                    <div class="card-val">${registrations.length}</div>
+                    <p style="font-size: 0.8rem; color: var(--admin-muted); margin-top: 0.25rem;">Iscritti dal modulo online</p>
+                </div>
+                <div class="card gold">
+                    <div class="card-label">Compensi Staff</div>
+                    <div class="card-val">€ ${Object.values(teacherStats).reduce((acc, t) => acc + t.total_pay, 0).toFixed(2)}</div>
+                    <p style="font-size: 0.8rem; color: var(--admin-muted); margin-top: 0.25rem;">Totale compensi calcolati</p>
+                </div>
+                <div class="card green">
+                    <div class="card-label">Totale Iscrizioni</div>
+                    <div class="card-val">€ ${registrations.reduce((acc, r) => acc + (parseFloat(r.total_amount) || 0), 0).toFixed(2)}</div>
+                    <p style="font-size: 0.8rem; color: var(--admin-muted); margin-top: 0.25rem;">Incasso quote di iscrizione</p>
+                </div>
+            </div>
+
+            <!-- Altri grafici o sintesi utili -->
+            <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));">
+                <div class="card" style="min-height: 250px;">
+                    <div class="card-label" style="margin-bottom: 1.25rem;">Distribuzione Tipologie Lezioni</div>
+                    <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                        <div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.25rem;">
+                                <span>Lezioni Private</span>
+                                <strong>${bookings.filter(b => b.status !== 'cancelled' && (b.lesson_type === 'private' || !b.lesson_type)).length} lezioni</strong>
+                            </div>
+                            <div style="height: 8px; border-radius: 4px; background: rgba(255,255,255,0.05); overflow:hidden;">
+                                <div style="width: ${bookings.length ? (bookings.filter(b => b.status !== 'cancelled' && (b.lesson_type === 'private' || !b.lesson_type)).length / bookings.filter(b => b.status !== 'cancelled').length * 100) : 0}%; height:100%; background: var(--admin-cyan);"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.25rem;">
+                                <span>Group Lessons</span>
+                                <strong>${bookings.filter(b => b.status !== 'cancelled' && b.lesson_type === 'group').length} sessioni</strong>
+                            </div>
+                            <div style="height: 8px; border-radius: 4px; background: rgba(255,255,255,0.05); overflow:hidden;">
+                                <div style="width: ${bookings.length ? (bookings.filter(b => b.status !== 'cancelled' && b.lesson_type === 'group').length / bookings.filter(b => b.status !== 'cancelled').length * 100) : 0}%; height:100%; background: var(--accent);"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.25rem;">
+                                <span>Lectures</span>
+                                <strong>${bookings.filter(b => b.status !== 'cancelled' && b.lesson_type === 'lecture').length} sessioni</strong>
+                            </div>
+                            <div style="height: 8px; border-radius: 4px; background: rgba(255,255,255,0.05); overflow:hidden;">
+                                <div style="width: ${bookings.length ? (bookings.filter(b => b.status !== 'cancelled' && b.lesson_type === 'lecture').length / bookings.filter(b => b.status !== 'cancelled').length * 100) : 0}%; height:100%; background: #6c5ce7;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="min-height: 250px;">
+                    <div class="card-label" style="margin-bottom: 1.25rem;">Info di Sistema</div>
+                    <div style="display:flex; flex-direction:column; gap:0.65rem; font-size:0.88rem;">
+                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:0.4rem;">
+                            <span style="color:var(--admin-muted);">Data creazione report:</span>
+                            <strong>${new Date().toLocaleDateString('it-IT')} ore ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:0.4rem;">
+                            <span style="color:var(--admin-muted);">Numero insegnanti in anagrafica:</span>
+                            <strong>${teachers.length}</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:0.4rem;">
+                            <span style="color:var(--admin-muted);">Numero turni inseriti:</span>
+                            <strong>${availability.length}</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--admin-muted);">Messaggi contatti totali:</span>
+                            <strong>${messages.length}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRENOTAZIONI TAB -->
+        <div id="panel-bookings" class="tab-panel">
+            <div class="section-card">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Registro Completo Prenotazioni</h2>
+                        <p class="page-desc">Elenco di tutte le lezioni configurate nel sistema.</p>
+                    </div>
+                    <div class="search-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="search-input" placeholder="Cerca lezioni…" onkeyup="filterTable('table-bookings', this.value)">
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table id="table-bookings">
+                        <thead>
+                            <tr>
+                                <th>Studente / Coppia</th>
+                                <th>Insegnante</th>
+                                <th>Data</th>
+                                <th>Orario</th>
+                                <th>Tipo</th>
+                                <th>Prezzo</th>
+                                <th>Paga Staff</th>
+                                <th>Stato</th>
+                                <th>Note Admin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${bookings.map(b => `
+                                <tr>
+                                    <td><strong>${b.registrations ? b.registrations.full_name : (b.user_id || '—')}</strong></td>
+                                    <td>${b.teachers ? b.teachers.full_name : '—'}</td>
+                                    <td>${b.lesson_date ? b.lesson_date.split('-').reverse().join('/') : ''}</td>
+                                    <td>${b.start_time ? b.start_time.slice(0, 5) : ''} – ${b.end_time ? b.end_time.slice(0, 5) : ''}</td>
+                                    <td><span class="badge ${b.lesson_type || 'private'}">${b.lesson_type || 'private'}</span></td>
+                                    <td>€ ${(parseFloat(b.lesson_price) || 0).toFixed(2)}</td>
+                                    <td>€ ${(parseFloat(b.staff_pay !== null && b.staff_pay !== undefined ? b.staff_pay : (b.teachers ? b.teachers.pay_rate : 0)) || 0).toFixed(2)}</td>
+                                    <td><span style="font-weight:600; color:${b.status === 'cancelled' ? '#ff6b6b' : '#1dd1a1'};">${b.status || 'confirmed'}</span></td>
+                                    <td><small style="color:var(--admin-muted);">${b.admin_notes || '—'}</small></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TEACHERS TAB -->
+        <div id="panel-teachers" class="tab-panel">
+            <div class="section-card">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Insegnanti &amp; Conteggio Compensi</h2>
+                        <p class="page-desc">Visualizza i totali lezioni fatte e le stime di paga staff.</p>
+                    </div>
+                    <div class="search-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="search-input" placeholder="Cerca insegnante…" onkeyup="filterTable('table-teachers', this.value)">
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table id="table-teachers">
+                        <thead>
+                            <tr>
+                                <th>Nome Insegnante</th>
+                                <th>Email</th>
+                                <th>Paga Oraria</th>
+                                <th>Privates</th>
+                                <th>Groups</th>
+                                <th>Lectures</th>
+                                <th>Altro</th>
+                                <th>Totale Maturato</th>
+                                <th style="text-align:center;">Segnato Pagato</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Object.values(teacherStats).map(t => `
+                                <tr>
+                                    <td><strong>${t.name}</strong></td>
+                                    <td>${t.email}</td>
+                                    <td>€ ${t.pay_rate.toFixed(2)}</td>
+                                    <td>${t.private_count}</td>
+                                    <td>${t.group_count}</td>
+                                    <td>${t.lecture_count}</td>
+                                    <td>${t.other_count}</td>
+                                    <td style="color:#feca57; font-weight:700;">€ ${t.total_pay.toFixed(2)}</td>
+                                    <td style="text-align:center;"><span class="badge ${t.paid === 'Sì' ? 'yes' : 'no'}">${t.paid}</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- REGISTRATIONS TAB -->
+        <div id="panel-registrations" class="tab-panel">
+            <div class="section-card">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Anagrafica Iscritti Camp</h2>
+                        <p class="page-desc">Tutti gli iscritti registrati dal modulo entry form.</p>
+                    </div>
+                    <div class="search-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="search-input" placeholder="Cerca iscritti…" onkeyup="filterTable('table-registrations', this.value)">
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table id="table-registrations">
+                        <thead>
+                            <tr>
+                                <th>Nome Completo</th>
+                                <th>Email</th>
+                                <th>Telefono</th>
+                                <th>Ruolo</th>
+                                <th>Pacchetto</th>
+                                <th>Citta</th>
+                                <th>Nazione</th>
+                                <th>Lezioni</th>
+                                <th>Quota Totale</th>
+                                <th style="text-align:center;">Pagamento</th>
+                                <th>Note</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Object.values(registrationStats).map(r => `
+                                <tr>
+                                    <td><strong>${r.name}</strong></td>
+                                    <td>${r.email}</td>
+                                    <td>${r.phone}</td>
+                                    <td>${r.role}</td>
+                                    <td><span style="color:var(--admin-cyan); font-weight:600;">${r.package}</span></td>
+                                    <td>${r.city}</td>
+                                    <td>${r.country}</td>
+                                    <td>${r.booking_count}</td>
+                                    <td style="color:#1dd1a1; font-weight:700;">€ ${(parseFloat(r.total_amount) || 0).toFixed(2)}</td>
+                                    <td style="text-align:center;"><span class="badge ${r.is_paid === 'Saldato' ? 'yes' : 'no'}">${r.is_paid}</span></td>
+                                    <td><small style="color:var(--admin-muted);">${r.notes || '—'}</small></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- MESSAGES TAB -->
+        <div id="panel-messages" class="tab-panel">
+            <div class="section-card">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Messaggi Form Contatti</h2>
+                        <p class="page-desc">Archivio storico delle richieste di contatto ricevute.</p>
+                    </div>
+                    <div class="search-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="search-input" placeholder="Cerca nei messaggi…" onkeyup="filterTable('table-messages', this.value)">
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table id="table-messages">
+                        <thead>
+                            <tr>
+                                <th style="width: 18%;">Mittente</th>
+                                <th style="width: 18%;">Email</th>
+                                <th style="width: 18%;">Oggetto</th>
+                                <th style="width: 34%;">Messaggio</th>
+                                <th style="width: 12%;">Ricevuto il</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${messages.map(m => `
+                                <tr>
+                                    <td><strong>${m.name || '—'}</strong></td>
+                                    <td>${m.email || '—'}</td>
+                                    <td><span style="font-weight:600; color:var(--admin-cyan);">${m.subject || '—'}</span></td>
+                                    <td><small style="display:block; max-height:80px; overflow-y:auto; color:var(--admin-text);">${m.message || '—'}</small></td>
+                                    <td>${m.created_at ? new Date(m.created_at).toLocaleDateString('it-IT') : '—'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function switchPanel(panelId, btn) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
+            document.getElementById(panelId).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        function filterTable(tableId, query) {
+            const q = query.toLowerCase();
+            const rows = document.querySelectorAll('#' + tableId + ' tbody tr');
+            rows.forEach(r => {
+                const text = r.textContent.toLowerCase();
+                r.style.display = text.includes(q) ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>`;
+
+        camp.file('REPORT_GENERALE_CAMP.html', htmlReport);
 
         // README
-        camp.file('README.txt',
-            `Tuscany Camp — Backup\nGenerato il: ${new Date().toLocaleString('it-IT')}\n\n` +
-            `Contenuto:\n` +
-            `  bookings.csv            — prenotazioni lezioni\n` +
-            `  teachers.csv            — anagrafica insegnanti\n` +
-            `  teacher_availability.csv— turni insegnanti\n` +
-            `  registrations.csv       — iscritti entry form\n` +
-            `  contact_messages.csv    — messaggi dal sito\n` +
-            `  pagamenti_segnati.json  — pagamenti staff segnati\n`
+        camp.file('LEGGIMI.txt',
+            `TUSCANY CAMP 2026 — ARCHIVIO BACKUP\n` +
+            `Generato il: ${new Date().toLocaleString('it-IT')}\n\n` +
+            `Questo archivio contiene tutti i dati del Camp esportati in formato leggibile.\n\n` +
+            `CONTENUTO:\n` +
+            `  REPORT_GENERALE_CAMP.html       — Apri questo file nel browser per vedere un report interattivo elegante di tutto il Camp!\n` +
+            `  1_prenotazioni_lezioni.csv       — Registro delle lezioni in formato CSV (compatibile con Excel)\n` +
+            `  2_insegnanti.csv                 — Elenco degli insegnanti\n` +
+            `  3_turni_disponibilita.csv        — Turni di disponibilita degli insegnanti nel database\n` +
+            `  4_iscritti_camp.csv              — Elenco completo degli iscritti al Camp\n` +
+            `  5_messaggi_contatti.csv          — Messaggi ricevuti dal form dei contatti (dalla tabella contacts)\n` +
+            `  pagamenti_insegnanti_segnati.json— File JSON contenente lo stato dei pagamenti degli insegnanti (da localStorage)\n\n` +
+            `NOTA SULLA LETTURA DEI CSV:\n` +
+            `  I file CSV utilizzano il separatore punto e virgola (;) ed includono il BOM UTF-8.\n` +
+            `  Possono essere aperti direttamente in Excel, Numbers o Calc senza problemi di caratteri accentati.`
         );
 
-        setZipProgress(95, 'Compressione in corso…');
+        setZipProgress(95, 'Compressione archivio in corso…');
         const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
         setZipProgress(100, 'Download avviato!');
 
@@ -3592,7 +4454,7 @@ window.exportCampZip = async () => {
         const url  = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href     = url;
-        link.download = `TuscanyСamp_Backup_${new Date().toISOString().slice(0, 10)}.zip`;
+        link.download = `TuscanyCamp_Backup_${new Date().toISOString().slice(0, 10)}.zip`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -3617,7 +4479,7 @@ const SECTION_LABELS = {
     teacher_availability: 'tutti i turni degli insegnanti',
     teachers:             'tutti gli insegnanti (e le loro prenotazioni)',
     registrations:        'tutti gli iscritti al Camp',
-    contact_messages:     'tutti i messaggi di contatto',
+    contacts:             'tutti i messaggi di contatto',
 };
 
 window.deleteSection = async (table) => {
@@ -3673,7 +4535,7 @@ window.resetAllCamp = async () => {
     const confirm2 = confirm('Ultima conferma: vuoi davvero resettare tutto il Camp?');
     if (!confirm2) return;
 
-    const tablesToReset = ['bookings', 'teacher_availability', 'registrations', 'contact_messages'];
+    const tablesToReset = ['bookings', 'teacher_availability', 'registrations', 'contacts'];
     const results = [];
 
     for (const table of tablesToReset) {
