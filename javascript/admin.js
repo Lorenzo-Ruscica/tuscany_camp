@@ -113,16 +113,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    
-    const allowedAdmins = [
-        'admin@tuscanycamp.com',
-        'mirko@gozzoli.com',
-        'lorenzo.ruscica@outlook.it'
-    ];
-
+    // Verifica admin dal database (non più hardcoded nel JS)
     const userEmail = session.user.email;
+    const { data: adminRow } = await window.supabase
+        .from('admins')
+        .select('id')
+        .eq('email', userEmail)
+        .maybeSingle();
 
-    if (!allowedAdmins.includes(userEmail)) {
+    if (!adminRow) {
         alert("ACCESSO NEGATO: Non sei un amministratore autorizzato.");
         window.location.href = 'index.html';
         return;

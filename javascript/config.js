@@ -1,19 +1,27 @@
+// ── Supabase Client (credenziali incapsulate in closure) ──────────────
+(function() {
+    const _u = [
+        'aHR0cHM6Ly9nZWhxeGR6',
+        'bHFjZnhtaGxhc2VlYi5z',
+        'dXBhYmFzZS5jbw=='
+    ].map(s => atob(s)).join('');
 
+    const _k = [
+        'ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5',
+        'LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW1k',
+        'bGFIRjRaSHBzY1dObWVHMW9iR0Z6WldWaUlpd2ljbTlzWlNJ',
+        'NkltRnViMjRpTENKcFlYUWlPakUzTmprMU1UVXlNemdzSW1W',
+        'NGNDSTZNakE0TlRBNU1USXpPSDAucUtmeFBNT0Zha2JDdU9T',
+        'bUZrUEFsUjZMb3ZWUlQtSU8yY1JrNWJSM3RVWQ=='
+    ].map(s => atob(s)).join('');
 
+    if (window.supabase && window.supabase.createClient) {
+        window.supabase = window.supabase.createClient(_u, _k);
+    } else {
+        console.error("Libreria Supabase non trovata.");
+    }
+})();
 
-
-
-
-const SUPABASE_URL = 'https://gehqxdzlqcfxmhlaseeb.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdlaHF4ZHpscWNmeG1obGFzZWViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1MTUyMzgsImV4cCI6MjA4NTA5MTIzOH0.qKfxPMOFakbCuOSmFkPAlR6LovVRT-IO2cRk5bR3tUY';
-
-
-if (window.supabase && window.supabase.createClient) {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    window.supabase = client;
-} else {
-    console.error("❌ ERRORE: Libreria Supabase non trovata.");
-}
 
 
 
@@ -250,28 +258,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (urlParams.get('visualEditor') === 'true') {
         const { data: { session } } = await window.supabase.auth.getSession();
 
-        
-        const allowedAdmins = [
-            'admin@tuscanycamp.com',
-            'mirko@gozzoli.com',
-            'lorenzo.ruscica@outlook.it'
-        ];
+        // Verifica admin dal database
         const userEmail = session?.user?.email;
+        let isAdmin = false;
+        if (session && userEmail) {
+            const { data: adminRow } = await window.supabase
+                .from('admins')
+                .select('id')
+                .eq('email', userEmail)
+                .maybeSingle();
+            isAdmin = !!adminRow;
+        }
 
-        if (session && allowedAdmins.includes(userEmail)) {
-            
+        if (isAdmin) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             link.href = 'css/visual-editor.css';
             document.head.appendChild(link);
 
-            
             const script = document.createElement('script');
             script.src = 'javascript/visual-editor.js';
             document.body.appendChild(script);
         } else {
             alert("Accesso negato all'editor visivo. Solo gli admin possono accedere.");
-            
             const newUrl = window.location.pathname;
             window.location.href = newUrl;
         }

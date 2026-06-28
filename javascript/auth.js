@@ -129,17 +129,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const userEmail = data.user.email;
 
-                
-                
-                const admins = [
-                    'admin@tuscanycamp.com',
-                    'mirko@gozzoli.com',
-                    'lorenzo.ruscica@outlook.it'
-                ];
+                // Verifica admin dal database
+                const { data: adminRow } = await window.supabase
+                    .from('admins')
+                    .select('id')
+                    .eq('email', userEmail)
+                    .maybeSingle();
 
-                if (admins.includes(userEmail)) {
+                if (adminRow) {
                     window.location.href = 'admin.html';
-                    return; 
+                    return;
                 }
 
                 
